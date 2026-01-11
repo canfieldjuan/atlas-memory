@@ -1,0 +1,975 @@
+"""
+Minimal FastAPI wrapper for graphiti-core
+Exposes native graphiti-core API for Next.js client
+"""
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from graphiti_core import Graphiti
+from graphiti_core.edges import EntityEdge
+from graphiti_core.nodes import EpisodeType
+from graphiti_core.errors import NodeNotFoundError
+from graphiti_core.utils.bulk_utils import RawEpisode
+from graphiti_core.graphiti import AddBulkEpisodeResults
+from graphiti_core.prompts.models import Message
+
+from embedder_factory import EmbedderSettings, create_embedder
+from sentiment_similarity import SentimentSimilarityAnalyzer
+from llm_client_wrapper import create_retrying_llm_client
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+class Settings(BaseSettings):
+    openai_api_key: str
+    openai_base_url: str | None = None
+    model_name: str | None = None
+    neo4j_uri: str
+    neo4j_user: str
+    neo4j_password: str
+    
+    # Embedder configuration (optional, defaults to OpenAI)
+    embedder_provider: str = "openai"
+    embedder_model: str | None = None
+    embedder_api_key: str | None = None
+    embedder_base_url: str | None = None
+    embedder_device: str = "cpu"
+    embedder_batch_size: int = 32
+    embedder_embedding_dim: int | None = None
+
+    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
+
+
+def get_settings():
+    return Settings()
+
+
+# ============================================================================
+# DTOs (Data Transfer Objects)
+# ============================================================================
+
+class EpisodeRequest(BaseModel):
+    name: str
+    episode_body: str
+    source_description: str
+    reference_time: str  # ISO 8601
+    group_id: str
+    is_historical: bool = False
+    data_source_type: str = "current"  # current, historical, training, archived
+    ingestion_date: str | None = None  # ISO 8601, defaults to now
+
+
+class EpisodeResponse(BaseModel):
+    episode_id: str
+    entities_created: int = 0
+    relations_created: int = 0
+
+
+class SearchResult(BaseModel):
+    edges: list[dict]
+    nodes: list[dict] = []
+
+
+class HealthResponse(BaseModel):
+    status: str
+    version: str = "1.0.0"
+
+
+class BulkEpisodeRequest(BaseModel):
+    episodes: list[EpisodeRequest]
+    group_id: str
+    is_historical: bool = False
+    data_source_type: str = "current"  # current, historical, training, archived
+
+
+class BulkEpisodeResponse(BaseModel):
+    total_episodes: int
+    successful_episodes: int
+    episode_ids: list[str]
+
+
+class TemporalIntent(BaseModel):
+    is_historical: bool | None = None
+    data_source_type: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
+
+
+class TraversalRequest(BaseModel):
+    start_entity_name: str
+    relation_types: list[str] = []
+    max_hops: int = 3
+    direction: str = "both"  # outgoing, incoming, both
+    group_id: str
+
+
+class PathStep(BaseModel):
+    entity: dict
+    relation: dict | None = None
+
+
+class GraphPath(BaseModel):
+    steps: list[PathStep]
+    length: int
+
+
+class TraversalResponse(BaseModel):
+    paths: list[GraphPath]
+
+
+class ShortestPathRequest(BaseModel):
+    start_entity: str
+    end_entity: str
+    group_id: str
+    max_hops: int = 5
+
+
+class ShortestPathResponse(BaseModel):
+    path: GraphPath | None = None
+    found: bool = False
+
+
+class SentimentRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Text to analyze for sentiment")
+
+
+class SentimentResponse(BaseModel):
+    text: str
+    sentiment: str  # positive, neutral, negative
+    score: float  # -1 to +1
+    confidence: float  # 0 to 1
+    method: str  # semantic_similarity
+
+
+# ============================================================================
+# Graphiti Dependency
+# ============================================================================
+
+from fastapi import Header
+
+async def get_graphiti(
+    settings: Annotated[Settings, Depends(get_settings)],
+    x_embedder_provider: str | None = Header(None, alias="X-Embedder-Provider"),
+    x_embedder_base_url: str | None = Header(None, alias="X-Embedder-Base-Url"),
+    x_embedder_model: str | None = Header(None, alias="X-Embedder-Model"),
+    x_embedder_api_key: str | None = Header(None, alias="X-Embedder-Api-Key"),
+):
+    """Create and yield Graphiti client with optional per-request embedder config"""
+
+    # Use per-request config if provided, otherwise fall back to settings
+    provider = x_embedder_provider or settings.embedder_provider
+    base_url = x_embedder_base_url or settings.embedder_base_url or settings.openai_base_url
+    model = x_embedder_model or settings.embedder_model
+    api_key = x_embedder_api_key or settings.embedder_api_key or settings.openai_api_key
+
+    # Map 'runpod' provider to 'openai' since RunPod uses OpenAI-compatible API
+    effective_provider = "openai" if provider == "runpod" else provider
+
+    # Create custom embedder based on settings
+    embedder_config = EmbedderSettings(
+        provider=effective_provider,
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
+        device=settings.embedder_device,
+        batch_size=settings.embedder_batch_size,
+        embedding_dim=settings.embedder_embedding_dim,
+    )
+
+    logger.info(
+        "Creating embedder: provider=%s (effective=%s) model=%s base_url=%s",
+        provider,
+        effective_provider,
+        embedder_config.model,
+        base_url[:50] if base_url else None,
+    )
+
+    try:
+        embedder = create_embedder(embedder_config)
+    except Exception as e:
+        logger.error("Failed to create embedder: %s", e)
+        raise HTTPException(status_code=500, detail=f"Embedder creation failed: {e}")
+
+    # Create LLM client with retry/backoff for rate limits
+    llm_client = create_retrying_llm_client(
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url,
+        model=settings.model_name,
+        max_retries=8,
+        base_delay=5.0,
+        max_delay=60.0,
+    )
+    logger.info("Created LLM client with retry logic (max_retries=8, base_delay=5s)")
+
+    client = Graphiti(
+        uri=settings.neo4j_uri,
+        user=settings.neo4j_user,
+        password=settings.neo4j_password,
+        embedder=embedder,
+        llm_client=llm_client,
+    )
+
+    try:
+        yield client
+    finally:
+        await client.close()
+
+
+GraphitiDep = Annotated[Graphiti, Depends(get_graphiti)]
+
+
+# ============================================================================
+# Sentiment Analyzer Dependency
+# ============================================================================
+
+sentiment_analyzer = None
+
+
+async def get_sentiment_analyzer(settings: Annotated[Settings, Depends(get_settings)]):
+    """Get or create sentiment analyzer singleton"""
+    global sentiment_analyzer
+    if sentiment_analyzer is None:
+        logger.info("Creating sentiment analyzer...")
+        embedder_config = EmbedderSettings(
+            provider=settings.embedder_provider,
+            model=settings.embedder_model,
+            api_key=settings.embedder_api_key or settings.openai_api_key,
+            base_url=settings.embedder_base_url or settings.openai_base_url,
+            device=settings.embedder_device,
+            batch_size=settings.embedder_batch_size,
+            embedding_dim=settings.embedder_embedding_dim,
+        )
+        embedder = create_embedder(embedder_config)
+        sentiment_analyzer = SentimentSimilarityAnalyzer(embedder)
+        await sentiment_analyzer.initialize()
+        logger.info("Sentiment analyzer initialized successfully")
+    return sentiment_analyzer
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+async def get_episode_temporal_metadata(driver, episode_uuid: str) -> dict | None:
+    """Get temporal metadata from episode node"""
+    try:
+        result = await driver.execute_query(
+            """
+            MATCH (e:Episodic {uuid: $uuid})
+            RETURN e.is_historical as is_historical,
+                   e.data_source_type as data_source_type,
+                   e.ingestion_date as ingestion_date
+            """,
+            uuid=episode_uuid
+        )
+        if result.records and len(result.records) > 0:
+            record = result.records[0]
+            return {
+                'is_historical': record['is_historical'],
+                'data_source_type': record['data_source_type'],
+                'ingestion_date': record['ingestion_date'],
+            }
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to get temporal metadata for episode {episode_uuid}: {e}")
+        return None
+
+
+async def add_episode_metadata(
+    driver,
+    episode_uuid: str,
+    is_historical: bool,
+    data_source_type: str,
+    ingestion_date: datetime,
+) -> None:
+    """Add custom temporal metadata to episode node in Neo4j"""
+    try:
+        logger.info(
+            "Adding metadata to episode %s: is_historical=%s, type=%s, date=%s",
+            episode_uuid,
+            is_historical,
+            data_source_type,
+            ingestion_date,
+        )
+
+        query = """
+        MATCH (e:Episodic {uuid: $uuid})
+        SET e.is_historical = $is_historical,
+            e.data_source_type = $data_source_type,
+            e.ingestion_date = datetime($ingestion_date)
+        RETURN e.uuid as uuid
+        """
+        result = await driver.execute_query(
+            query,
+            uuid=episode_uuid,
+            is_historical=is_historical,
+            data_source_type=data_source_type,
+            ingestion_date=ingestion_date.isoformat(),
+        )
+
+        logger.info("Metadata added successfully for episode %s", episode_uuid)
+    except Exception as e:
+        logger.error("Failed to add metadata for episode %s: %s", episode_uuid, e)
+
+
+async def analyze_query_temporal_intent(llm_client, query: str) -> dict:
+    """
+    Analyze search query for temporal intent using LLM
+    Returns dict with detected filters: is_historical, data_source_type, date_from, date_to
+    """
+    try:
+        prompt_text = f"""Analyze this search query for temporal intent: "{query}"
+
+Determine if the user is looking for:
+- Historical data (old/past/archived data)
+- Current data (recent/today/latest data)
+- Specific time period
+- Specific data source type (current, historical, training, archived)
+
+Examples:
+Query: "show me historical training data"
+Result: is_historical=true, data_source_type="historical"
+
+Query: "recent updates"
+Result: is_historical=false, data_source_type="current"
+
+Query: "training data"
+Result: is_historical=null, data_source_type=null"""
+
+        logger.info("Analyzing query for temporal intent: %s", query[:100])
+
+        messages = [Message(role="user", content=prompt_text)]
+
+        llm_response = await llm_client.generate_response(
+            messages,
+            response_model=TemporalIntent,
+        )
+
+        logger.info("LLM temporal analysis response: %s", llm_response)
+
+        result = {
+            'is_historical': llm_response.get('is_historical'),
+            'data_source_type': llm_response.get('data_source_type'),
+            'date_from': llm_response.get('date_from'),
+            'date_to': llm_response.get('date_to'),
+        }
+
+        logger.info("Detected temporal filters: %s", result)
+        return result
+
+    except Exception as e:
+        logger.warning("Failed to analyze temporal intent: %s", e)
+        return {
+            'is_historical': None,
+            'data_source_type': None,
+            'date_from': None,
+            'date_to': None,
+        }
+
+
+# ============================================================================
+# FastAPI App
+# ============================================================================
+
+app = FastAPI(title="Graphiti Wrapper API", version="1.0.0")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Preload the embedder model at startup to avoid meta tensor issues"""
+    logger.info("Preloading embedder model at startup...")
+    try:
+        settings = Settings()
+        embedder_config = EmbedderSettings(
+            provider=settings.embedder_provider,
+            model=settings.embedder_model,
+            api_key=settings.embedder_api_key or settings.openai_api_key,
+            base_url=settings.embedder_base_url or settings.openai_base_url,
+            device=settings.embedder_device,
+            batch_size=settings.embedder_batch_size,
+            embedding_dim=settings.embedder_embedding_dim,
+        )
+        embedder = create_embedder(embedder_config)
+        # Force model loading by running a test embedding
+        test_result = await embedder.create("startup test")
+        logger.info(f"Embedder preloaded successfully, test embedding dim: {len(test_result)}")
+    except Exception as e:
+        logger.error(f"Failed to preload embedder: {e}")
+        # Don't fail startup, let it fail on first request instead
+
+
+@app.get('/health')
+async def health() -> HealthResponse:
+    """Health check endpoint"""
+    return HealthResponse(status="healthy")
+
+
+@app.get('/embedder/info')
+async def embedder_info(settings: Annotated[Settings, Depends(get_settings)]) -> dict:
+    """Get current embedder configuration"""
+    return {
+        "provider": settings.embedder_provider,
+        "model": settings.embedder_model or "default",
+        "device": settings.embedder_device,
+        "batch_size": settings.embedder_batch_size,
+        "embedding_dim": settings.embedder_embedding_dim or "default",
+    }
+
+
+@app.post('/episodes')
+async def add_episode(
+    request: EpisodeRequest,
+    graphiti: GraphitiDep
+) -> EpisodeResponse:
+    """Add an episode to the knowledge graph"""
+    try:
+        # Parse ISO 8601 timestamp
+        reference_time = datetime.fromisoformat(request.reference_time.replace('Z', '+00:00'))
+
+        # Add episode using graphiti-core's native API
+        result = await graphiti.add_episode(
+            name=request.name,
+            episode_body=request.episode_body,
+            source_description=request.source_description,
+            reference_time=reference_time,
+            group_id=request.group_id,
+            source=EpisodeType.text,  # Default to text type
+        )
+
+        episode_uuid = result.episode.uuid if hasattr(result, 'episode') else str(result)
+        logger.info(f"Added episode: {request.name} for group {request.group_id}")
+
+        # Add custom temporal metadata
+        ingestion_date = datetime.fromisoformat(request.ingestion_date.replace('Z', '+00:00')) \
+            if request.ingestion_date else datetime.now()
+
+        await add_episode_metadata(
+            graphiti.driver,
+            episode_uuid,
+            request.is_historical,
+            request.data_source_type,
+            ingestion_date,
+        )
+
+        # Return response matching client expectations
+        return EpisodeResponse(
+            episode_id=episode_uuid,
+            entities_created=0,  # graphiti-core doesn't return this
+            relations_created=0,  # graphiti-core doesn't return this
+        )
+    except Exception as e:
+        logger.error(f"Error adding episode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/episodes/bulk')
+async def add_episodes_bulk(
+    request: BulkEpisodeRequest,
+    graphiti: GraphitiDep
+) -> BulkEpisodeResponse:
+    """Add multiple episodes to the knowledge graph in bulk"""
+    try:
+        logger.info(f"Processing bulk upload: {len(request.episodes)} episodes for group {request.group_id}")
+
+        # Convert EpisodeRequest objects to RawEpisode objects
+        raw_episodes = []
+        for ep in request.episodes:
+            reference_time = datetime.fromisoformat(ep.reference_time.replace('Z', '+00:00'))
+            raw_ep = RawEpisode(
+                name=ep.name,
+                content=ep.episode_body,
+                source_description=ep.source_description,
+                reference_time=reference_time,
+                source=EpisodeType.text,
+            )
+            raw_episodes.append(raw_ep)
+
+        logger.info(f"Converted {len(raw_episodes)} episodes to RawEpisode format")
+
+        # Call graphiti's bulk add method
+        result = await graphiti.add_episode_bulk(
+            bulk_episodes=raw_episodes,
+            group_id=request.group_id,
+        )
+
+        # Extract episode IDs from result (handle async/sync iterables)
+        episode_ids = []
+        if hasattr(result, 'episodes') and result.episodes:
+            episodes = result.episodes
+            # If episodes is a coroutine, await it
+            if asyncio.iscoroutine(episodes):
+                episodes = await episodes
+            # If episodes is an async generator, collect items
+            if hasattr(episodes, '__aiter__'):
+                async for ep in episodes:
+                    episode_ids.append(ep.uuid)
+            else:
+                # Regular iterable
+                for ep in episodes:
+                    episode_ids.append(ep.uuid)
+
+        logger.info(f"Bulk upload complete: {len(episode_ids)} episodes added for group {request.group_id}")
+
+        # Add custom temporal metadata to all episodes
+        ingestion_date = datetime.now()
+        for episode_uuid in episode_ids:
+            await add_episode_metadata(
+                graphiti.driver,
+                episode_uuid,
+                request.is_historical,
+                request.data_source_type,
+                ingestion_date,
+            )
+
+        logger.info(f"Added metadata to {len(episode_ids)} episodes: is_historical={request.is_historical}")
+
+        return BulkEpisodeResponse(
+            total_episodes=len(request.episodes),
+            successful_episodes=len(episode_ids),
+            episode_ids=episode_ids,
+        )
+    except Exception as e:
+        logger.error(f"Error in bulk episode upload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/search')
+async def search(
+    query: str,
+    group_ids: str,  # Comma-separated
+    graphiti: GraphitiDep,
+    num_results: int = 10,
+    is_historical: bool | None = None,
+    data_source_type: str | None = None,
+    date_from: str | None = None,  # ISO 8601
+    date_to: str | None = None,  # ISO 8601
+) -> SearchResult:
+    """Search the knowledge graph with optional temporal filtering"""
+    try:
+        # Parse comma-separated group_ids
+        group_id_list = [gid.strip() for gid in group_ids.split(',') if gid.strip()]
+
+        # Auto-detect temporal intent if no explicit filters provided
+        if all(x is None for x in [is_historical, data_source_type, date_from, date_to]):
+            logger.info("No explicit filters provided, analyzing query for temporal intent")
+            detected_filters = await analyze_query_temporal_intent(graphiti.llm_client, query)
+
+            is_historical = detected_filters.get('is_historical')
+            data_source_type = detected_filters.get('data_source_type')
+            date_from = detected_filters.get('date_from')
+            date_to = detected_filters.get('date_to')
+
+            logger.info(
+                "Auto-detected filters: is_historical=%s, type=%s, date_range=%s to %s",
+                is_historical, data_source_type, date_from, date_to
+            )
+
+        # Search using graphiti-core's native API (get more results for filtering)
+        search_limit = num_results * 3 if any([is_historical is not None, data_source_type, date_from, date_to]) else num_results
+        edges = await graphiti.search(
+            query=query,
+            group_ids=group_id_list,
+            num_results=search_limit,
+        )
+
+        logger.info(
+            f"Search query: {query} | Found {len(edges)} edges | Filters: is_historical={is_historical}, "
+            f"data_source_type={data_source_type}, date_range={date_from} to {date_to}"
+        )
+
+        # Convert EntityEdge objects to dicts and apply temporal filters
+        edge_dicts = []
+        for idx, edge in enumerate(edges):
+            edge_dict = {
+                'uuid': edge.uuid,
+                'name': edge.name,
+                'fact': edge.fact,
+                'created_at': edge.created_at.isoformat() if edge.created_at else None,
+                'expired_at': edge.expired_at.isoformat() if edge.expired_at else None,
+            }
+
+            # Add source and target nodes
+            if hasattr(edge, 'source_node') and edge.source_node:
+                edge_dict['source_node'] = {
+                    'name': edge.source_node.name if hasattr(edge.source_node, 'name') else '',
+                    'uuid': edge.source_node.uuid if hasattr(edge.source_node, 'uuid') else '',
+                }
+
+            if hasattr(edge, 'target_node') and edge.target_node:
+                edge_dict['target_node'] = {
+                    'name': edge.target_node.name if hasattr(edge.target_node, 'name') else '',
+                    'uuid': edge.target_node.uuid if hasattr(edge.target_node, 'uuid') else '',
+                }
+
+            # Get metadata from episode and apply temporal filters
+            should_include = True
+            if hasattr(edge, 'episodes') and edge.episodes:
+                try:
+                    episode_uuid = edge.episodes[0] if isinstance(edge.episodes, list) else edge.episodes
+                    result = await graphiti.driver.execute_query(
+                        """MATCH (e:Episodic {uuid: $uuid})
+                        RETURN e.source_description as source_description,
+                               e.is_historical as is_historical,
+                               e.data_source_type as data_source_type,
+                               e.ingestion_date as ingestion_date""",
+                        uuid=str(episode_uuid)
+                    )
+                    if result.records:
+                        record = result.records[0]
+                        if record['source_description']:
+                            edge_dict['source_description'] = record['source_description']
+
+                        # Apply temporal filters
+                        if is_historical is not None and record['is_historical'] != is_historical:
+                            should_include = False
+                        if data_source_type and record['data_source_type'] != data_source_type:
+                            should_include = False
+                        if date_from and record['ingestion_date']:
+                            ingestion_dt = record['ingestion_date']
+                            # Convert Neo4j DateTime to Python datetime if needed
+                            if hasattr(ingestion_dt, 'to_native'):
+                                ingestion_dt = ingestion_dt.to_native()
+                            # Ensure timezone-aware for comparison
+                            if ingestion_dt.tzinfo is None:
+                                ingestion_dt = ingestion_dt.replace(tzinfo=timezone.utc)
+                            date_from_dt = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                            # Ensure date_from_dt is also timezone-aware (LLM may return just date like '2025-12-12')
+                            if date_from_dt.tzinfo is None:
+                                date_from_dt = date_from_dt.replace(tzinfo=timezone.utc)
+                            if ingestion_dt < date_from_dt:
+                                should_include = False
+                        if date_to and record['ingestion_date']:
+                            ingestion_dt = record['ingestion_date']
+                            # Convert Neo4j DateTime to Python datetime if needed
+                            if hasattr(ingestion_dt, 'to_native'):
+                                ingestion_dt = ingestion_dt.to_native()
+                            # Ensure timezone-aware for comparison
+                            if ingestion_dt.tzinfo is None:
+                                ingestion_dt = ingestion_dt.replace(tzinfo=timezone.utc)
+                            date_to_dt = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                            # Ensure date_to_dt is also timezone-aware (LLM may return just date like '2025-12-31')
+                            if date_to_dt.tzinfo is None:
+                                date_to_dt = date_to_dt.replace(tzinfo=timezone.utc)
+                            if ingestion_dt > date_to_dt:
+                                should_include = False
+                except Exception as e:
+                    logger.warning(f"Could not get metadata for edge {edge.uuid}: {e}")
+
+            # Only include if passes temporal filters
+            if not should_include:
+                continue
+
+            # Add score - use native score if available, otherwise generate synthetic score
+            # Synthetic scores: rank-based, decreasing from 1.0 to 0.1
+            if hasattr(edge, 'score') and edge.score is not None:
+                edge_dict['score'] = edge.score
+            else:
+                # Generate synthetic relevance score based on position in results
+                # First result = 1.0, last result approaches 0.1
+                # Formula: 1.0 - (idx / total_results) * 0.9
+                total_results = len(edges)
+                synthetic_score = max(0.1, 1.0 - (idx / max(1, total_results)) * 0.9)
+                edge_dict['score'] = synthetic_score
+
+            edge_dicts.append(edge_dict)
+
+            # Limit results after filtering
+            if len(edge_dicts) >= num_results:
+                break
+
+        logger.info(f"After filtering: {len(edge_dicts)} edges returned")
+        return SearchResult(edges=edge_dicts, nodes=[])
+    except Exception as e:
+        logger.error(f"Error searching: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete('/episodes/{episode_id}')
+async def delete_episode(
+    episode_id: str,
+    graphiti: GraphitiDep
+):
+    """Delete an episode from the knowledge graph"""
+    try:
+        from graphiti_core.nodes import EpisodicNode
+
+        # Get and delete the episodic node
+        episode = await EpisodicNode.get_by_uuid(graphiti.driver, episode_id)
+        await episode.delete(graphiti.driver)
+
+        logger.info(f"Deleted episode: {episode_id}")
+        return {"message": "Episode deleted", "success": True}
+    except NodeNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Episode {episode_id} not found")
+    except Exception as e:
+        logger.error(f"Error deleting episode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/entities/{entity_name}/edges')
+async def get_entity_edges(
+    entity_name: str,
+    group_ids: str,  # Comma-separated
+    graphiti: GraphitiDep
+) -> SearchResult:
+    """Get edges for a specific entity"""
+    try:
+        # Parse comma-separated group_ids
+        group_id_list = [gid.strip() for gid in group_ids.split(',') if gid.strip()]
+
+        # Search for the entity by name
+        edges = await graphiti.search(
+            query=entity_name,
+            group_ids=group_id_list,
+            num_results=50,  # Get more results for entity-specific queries
+        )
+
+        # Filter edges that contain the entity name
+        filtered_edges = [
+            edge for edge in edges
+            if entity_name.lower() in edge.name.lower()
+        ]
+
+        logger.info(f"Entity edges for {entity_name}: Found {len(filtered_edges)} edges")
+
+        # Convert to dicts (same as search endpoint)
+        edge_dicts = []
+        for idx, edge in enumerate(filtered_edges):
+            edge_dict = {
+                'uuid': edge.uuid,
+                'name': edge.name,
+                'fact': edge.fact,
+                'created_at': edge.created_at.isoformat() if edge.created_at else None,
+                'expired_at': edge.expired_at.isoformat() if edge.expired_at else None,
+            }
+
+            # Add source and target nodes
+            if hasattr(edge, 'source_node') and edge.source_node:
+                edge_dict['source_node'] = {
+                    'name': edge.source_node.name if hasattr(edge.source_node, 'name') else '',
+                    'uuid': edge.source_node.uuid if hasattr(edge.source_node, 'uuid') else '',
+                }
+
+            if hasattr(edge, 'target_node') and edge.target_node:
+                edge_dict['target_node'] = {
+                    'name': edge.target_node.name if hasattr(edge.target_node, 'name') else '',
+                    'uuid': edge.target_node.uuid if hasattr(edge.target_node, 'uuid') else '',
+                }
+
+            # Get source_description from episode if edge has episode references
+            if hasattr(edge, 'episodes') and edge.episodes:
+                try:
+                    episode_uuid = edge.episodes[0] if isinstance(edge.episodes, list) else edge.episodes
+                    result = await graphiti.driver.execute_query(
+                        "MATCH (e:Episodic {uuid: $uuid}) RETURN e.source_description as source_description",
+                        uuid=str(episode_uuid)
+                    )
+                    if result.records and result.records[0]['source_description']:
+                        edge_dict['source_description'] = result.records[0]['source_description']
+                except Exception as e:
+                    logger.warning(f"Could not get source_description for edge {edge.uuid}: {e}")
+
+            # Add score - use native score if available, otherwise generate synthetic score
+            if hasattr(edge, 'score') and edge.score is not None:
+                edge_dict['score'] = edge.score
+            else:
+                # Generate synthetic relevance score based on position in results
+                total_results = len(filtered_edges)
+                synthetic_score = max(0.1, 1.0 - (idx / max(1, total_results)) * 0.9)
+                edge_dict['score'] = synthetic_score
+
+            edge_dicts.append(edge_dict)
+
+        return SearchResult(edges=edge_dicts, nodes=[])
+    except Exception as e:
+        logger.error(f"Error getting entity edges: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/traverse', response_model=TraversalResponse)
+async def traverse_graph(
+    request: TraversalRequest,
+    graphiti: GraphitiDep
+) -> TraversalResponse:
+    """
+    Traverse graph from starting entity following specified relation types.
+    Returns paths found up to max_hops distance.
+    """
+    try:
+        logger.info(
+            "Traversal request: start=%s, max_hops=%d, direction=%s",
+            request.start_entity_name,
+            request.max_hops,
+            request.direction
+        )
+
+        # Build direction clause for Cypher
+        direction_clause = "-[r]-"
+        if request.direction == "outgoing":
+            direction_clause = "-[r]->"
+        elif request.direction == "incoming":
+            direction_clause = "<-[r]-"
+
+        # Build relation type filter
+        rel_filter = ""
+        if request.relation_types:
+            rel_types = "|".join(request.relation_types)
+            rel_filter = f":{rel_types}"
+
+        # Execute traversal query
+        cypher = f"""
+        MATCH path = (start:Entity {{name: $start_name, group_id: $group_id}})
+        {direction_clause.replace('[r]', f'[r{rel_filter}*1..{request.max_hops}]')}
+        (end:Entity)
+        RETURN path
+        LIMIT 100
+        """
+
+        result = await graphiti.driver.execute_query(
+            cypher,
+            start_name=request.start_entity_name,
+            group_id=request.group_id
+        )
+
+        paths = []
+        for record in result.records:
+            path_data = record['path']
+            formatted_path = format_neo4j_path(path_data)
+            if formatted_path:
+                paths.append(formatted_path)
+
+        logger.info("Traversal found %d paths", len(paths))
+        return TraversalResponse(paths=paths)
+
+    except Exception as e:
+        logger.error(f"Traversal error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/shortest-path', response_model=ShortestPathResponse)
+async def find_shortest_path(
+    request: ShortestPathRequest,
+    graphiti: GraphitiDep
+) -> ShortestPathResponse:
+    """
+    Find shortest path between two entities.
+    Returns the path if found, or None if no path exists.
+    """
+    try:
+        logger.info(
+            "Shortest path request: %s -> %s (max_hops=%d)",
+            request.start_entity,
+            request.end_entity,
+            request.max_hops
+        )
+
+        cypher = """
+        MATCH path = shortestPath(
+            (start:Entity {name: $start_name, group_id: $group_id})
+            -[*1..%d]-
+            (end:Entity {name: $end_name, group_id: $group_id})
+        )
+        RETURN path
+        """ % request.max_hops
+
+        result = await graphiti.driver.execute_query(
+            cypher,
+            start_name=request.start_entity,
+            end_name=request.end_entity,
+            group_id=request.group_id
+        )
+
+        if not result.records:
+            logger.info("No path found between %s and %s", request.start_entity, request.end_entity)
+            return ShortestPathResponse(path=None, found=False)
+
+        path_data = result.records[0]['path']
+        formatted_path = format_neo4j_path(path_data)
+
+        logger.info(
+            "Found path of length %d between %s and %s",
+            formatted_path.length if formatted_path else 0,
+            request.start_entity,
+            request.end_entity
+        )
+
+        return ShortestPathResponse(path=formatted_path, found=True)
+
+    except Exception as e:
+        logger.error(f"Shortest path error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def format_neo4j_path(path_data) -> GraphPath | None:
+    """Format Neo4j path object into GraphPath response model."""
+    try:
+        if path_data is None:
+            return None
+
+        steps = []
+        nodes = list(path_data.nodes)
+        relationships = list(path_data.relationships)
+
+        for i, node in enumerate(nodes):
+            step = PathStep(
+                entity={
+                    'name': node.get('name', ''),
+                    'uuid': node.get('uuid', ''),
+                    'labels': list(node.labels) if hasattr(node, 'labels') else [],
+                },
+                relation=None
+            )
+
+            # Add relation info if not the last node
+            if i < len(relationships):
+                rel = relationships[i]
+                step.relation = {
+                    'type': rel.type if hasattr(rel, 'type') else '',
+                    'fact': rel.get('fact', '') if hasattr(rel, 'get') else '',
+                    'uuid': rel.get('uuid', '') if hasattr(rel, 'get') else '',
+                }
+
+            steps.append(step)
+
+        return GraphPath(steps=steps, length=len(relationships))
+
+    except Exception as e:
+        logger.warning(f"Failed to format path: {e}")
+        return None
+
+
+@app.post('/analyze/sentiment', response_model=SentimentResponse)
+async def analyze_sentiment(
+    request: SentimentRequest,
+    analyzer: Annotated[SentimentSimilarityAnalyzer, Depends(get_sentiment_analyzer)]
+):
+    """
+    Analyze sentiment using semantic similarity.
+    Uses existing all-MiniLM-L6-v2 embedder with sentiment anchors.
+    Returns sentiment (positive/neutral/negative), score, and confidence.
+    """
+    logger.info("Sentiment analysis request received for text length: %d", len(request.text))
+
+    try:
+        result = await analyzer.analyze(request.text)
+        logger.info("Sentiment analysis completed: %s (score=%.4f, confidence=%.4f)",
+                   result.get("sentiment"), result.get("score", 0), result.get("confidence", 0))
+        return result
+    except Exception as e:
+        logger.error("Error in sentiment analysis endpoint: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)

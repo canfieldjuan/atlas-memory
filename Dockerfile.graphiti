@@ -1,0 +1,35 @@
+# FineTune Lab - Graphiti GraphRAG Server (Render deployment)
+# Knowledge graph API with Neo4j backend
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for layer caching
+COPY graphiti-wrapper/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy graphiti wrapper code
+COPY graphiti-wrapper/ ./graphiti-wrapper/
+
+# Set working directory for the server
+WORKDIR /app/graphiti-wrapper
+
+# Default port (Render sets PORT env var to 10000)
+ENV PORT=10000
+
+# Expose port (informational only, actual port from $PORT)
+EXPOSE 10000
+
+# Health check using PORT env var
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
+
+# Run graphiti server with PORT from environment
+CMD python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}

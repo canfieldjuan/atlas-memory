@@ -1,0 +1,294 @@
+{
+  "searchResults": {
+    "highConfidence": {
+      "edges": [
+        {
+          "uuid": "edge-001",
+          "name": "HAS_FEATURE",
+          "fact": "The RTX 4090 GPU has 16384 CUDA cores for parallel processing",
+          "source_node": { "name": "RTX 4090", "uuid": "node-001" },
+          "target_node": { "name": "CUDA Cores", "uuid": "node-002" },
+          "source_description": "NVIDIA Product Specifications",
+          "score": 0.95,
+          "created_at": "2024-01-15T10:00:00Z"
+        },
+        {
+          "uuid": "edge-002",
+          "name": "HAS_MEMORY",
+          "fact": "The RTX 4090 includes 24GB of GDDR6X video memory",
+          "source_node": { "name": "RTX 4090", "uuid": "node-001" },
+          "target_node": { "name": "GDDR6X Memory", "uuid": "node-003" },
+          "source_description": "NVIDIA Product Specifications",
+          "score": 0.92,
+          "created_at": "2024-01-15T10:00:00Z"
+        }
+      ],
+      "nodes": [
+        {
+          "uuid": "node-001",
+          "name": "RTX 4090",
+          "labels": ["GPU", "NVIDIA", "Product"],
+          "summary": "High-end consumer graphics card from NVIDIA",
+          "created_at": "2024-01-15T09:00:00Z"
+        }
+      ]
+    },
+    "lowConfidence": {
+      "edges": [
+        {
+          "uuid": "edge-003",
+          "name": "RELATED_TO",
+          "fact": "Some GPUs might have similar features",
+          "source_node": { "name": "Generic GPU", "uuid": "node-004" },
+          "score": 0.35,
+          "created_at": "2024-01-14T08:00:00Z"
+        },
+        {
+          "uuid": "edge-004",
+          "name": "POSSIBLY_USES",
+          "fact": "Various components may be involved",
+          "source_node": { "name": "Unknown Component", "uuid": "node-005" },
+          "score": 0.25,
+          "created_at": "2024-01-14T08:00:00Z"
+        }
+      ]
+    },
+    "mixedConfidence": {
+      "edges": [
+        {
+          "uuid": "edge-005",
+          "name": "HAS_SPEC",
+          "fact": "The processor runs at 2.5 GHz base clock",
+          "source_node": { "name": "Processor", "uuid": "node-006" },
+          "source_description": "Technical Manual",
+          "score": 0.88,
+          "created_at": "2024-01-15T11:00:00Z"
+        },
+        {
+          "uuid": "edge-006",
+          "name": "MAY_SUPPORT",
+          "fact": "Could potentially support newer standards",
+          "source_node": { "name": "Unknown", "uuid": "node-007" },
+          "score": 0.45,
+          "created_at": "2024-01-14T09:00:00Z"
+        },
+        {
+          "uuid": "edge-007",
+          "name": "USES",
+          "fact": "Uses DDR5 memory technology",
+          "source_node": { "name": "Memory System", "uuid": "node-008" },
+          "source_description": "Hardware Guide",
+          "score": 0.82,
+          "created_at": "2024-01-15T12:00:00Z"
+        }
+      ]
+    },
+    "duplicateFacts": {
+      "edges": [
+        {
+          "uuid": "edge-008",
+          "name": "HAS_CORES",
+          "fact": "The RTX 4090 has 16384 CUDA cores providing exceptional performance",
+          "source_node": { "name": "RTX 4090", "uuid": "node-001" },
+          "source_description": "Review Site A",
+          "score": 0.90,
+          "created_at": "2024-01-15T10:00:00Z"
+        },
+        {
+          "uuid": "edge-009",
+          "name": "FEATURES",
+          "fact": "The RTX 4090 has 16384 CUDA cores enabling parallel compute",
+          "source_node": { "name": "RTX 4090", "uuid": "node-001" },
+          "source_description": "Review Site B",
+          "score": 0.88,
+          "created_at": "2024-01-15T11:00:00Z"
+        },
+        {
+          "uuid": "edge-010",
+          "name": "SPECS",
+          "fact": "The RTX 4090 has 16384 CUDA cores for graphics processing",
+          "source_node": { "name": "RTX 4090", "uuid": "node-001" },
+          "source_description": "Tech Blog",
+          "score": 0.85,
+          "created_at": "2024-01-15T12:00:00Z"
+        }
+      ]
+    },
+    "emptyResults": {
+      "edges": [],
+      "nodes": []
+    }
+  },
+  "episodeResponses": {
+    "success": {
+      "episode_id": "ep-12345-abcde",
+      "entities_created": 5,
+      "relations_created": 8
+    },
+    "bulkSuccess": {
+      "total_episodes": 10,
+      "processed_episodes": 10,
+      "episode_ids": [
+        "ep-001",
+        "ep-002",
+        "ep-003",
+        "ep-004",
+        "ep-005",
+        "ep-006",
+        "ep-007",
+        "ep-008",
+        "ep-009",
+        "ep-010"
+      ],
+      "total_entities": 45,
+      "total_relations": 72
+    },
+    "partialSuccess": {
+      "total_episodes": 10,
+      "processed_episodes": 7,
+      "episode_ids": [
+        "ep-001",
+        "ep-002",
+        "ep-003",
+        "ep-005",
+        "ep-006",
+        "ep-008",
+        "ep-010"
+      ],
+      "total_entities": 32,
+      "total_relations": 51
+    }
+  },
+  "healthResponses": {
+    "healthy": {
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "degraded": {
+      "status": "degraded",
+      "version": "1.0.0"
+    },
+    "unhealthy": {
+      "status": "unhealthy",
+      "version": "1.0.0"
+    }
+  },
+  "errorResponses": {
+    "timeout": {
+      "error": "Request timeout after 30000ms"
+    },
+    "rateLimit": {
+      "error": "Rate limit exceeded. Please wait 60 seconds."
+    },
+    "serverError": {
+      "error": "Internal server error",
+      "code": 500
+    },
+    "notFound": {
+      "error": "Resource not found",
+      "code": 404
+    }
+  },
+  "documentRecords": {
+    "samplePdf": {
+      "id": "doc-pdf-001",
+      "user_id": "user-12345",
+      "filename": "technical-spec.pdf",
+      "file_type": "pdf",
+      "upload_path": "/uploads/user-12345/technical-spec.pdf",
+      "document_hash": "sha256-abc123def456",
+      "processed": true,
+      "neo4j_episode_ids": ["ep-001", "ep-002", "ep-003"],
+      "metadata": {
+        "userId": "user-12345",
+        "filename": "technical-spec.pdf",
+        "documentName": "Technical Specification",
+        "fileSize": 2048576,
+        "author": "Engineering Team",
+        "tags": ["technical", "specification", "v2"]
+      },
+      "created_at": "2024-01-15T09:00:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "version": 1,
+      "parent_id": null
+    },
+    "sampleMarkdown": {
+      "id": "doc-md-001",
+      "user_id": "user-12345",
+      "filename": "readme.md",
+      "file_type": "md",
+      "upload_path": "/uploads/user-12345/readme.md",
+      "document_hash": "sha256-xyz789ghi012",
+      "processed": false,
+      "neo4j_episode_ids": [],
+      "metadata": {
+        "userId": "user-12345",
+        "filename": "readme.md",
+        "documentName": "Project README"
+      },
+      "created_at": "2024-01-16T08:00:00Z",
+      "updated_at": "2024-01-16T08:00:00Z",
+      "version": 1,
+      "parent_id": null
+    },
+    "versionedDocument": {
+      "id": "doc-v2-001",
+      "user_id": "user-12345",
+      "filename": "api-guide.pdf",
+      "file_type": "pdf",
+      "upload_path": "/uploads/user-12345/api-guide-v2.pdf",
+      "document_hash": "sha256-version2hash",
+      "processed": true,
+      "neo4j_episode_ids": ["ep-v2-001", "ep-v2-002"],
+      "metadata": {
+        "userId": "user-12345",
+        "filename": "api-guide.pdf",
+        "documentName": "API Guide v2"
+      },
+      "created_at": "2024-01-17T14:00:00Z",
+      "updated_at": "2024-01-17T15:30:00Z",
+      "version": 2,
+      "parent_id": "doc-v1-001"
+    }
+  },
+  "processingStatus": {
+    "completed": {
+      "documentId": "doc-001",
+      "processed": true,
+      "episodeIds": ["ep-001", "ep-002", "ep-003"],
+      "status": "completed",
+      "totalChunks": 5,
+      "successfulChunks": 5,
+      "failedChunks": 0
+    },
+    "partialFailure": {
+      "documentId": "doc-002",
+      "processed": true,
+      "episodeIds": ["ep-004", "ep-006"],
+      "error": "2 of 4 chunks failed to process",
+      "status": "partial_failure",
+      "totalChunks": 4,
+      "successfulChunks": 2,
+      "failedChunks": 2
+    },
+    "failed": {
+      "documentId": "doc-003",
+      "processed": false,
+      "episodeIds": [],
+      "error": "All chunks failed to process: Graphiti service unavailable",
+      "status": "failed",
+      "totalChunks": 3,
+      "successfulChunks": 0,
+      "failedChunks": 3
+    },
+    "pending": {
+      "documentId": "doc-004",
+      "processed": false,
+      "episodeIds": [],
+      "status": "pending",
+      "totalChunks": 0,
+      "successfulChunks": 0,
+      "failedChunks": 0
+    }
+  }
+}
