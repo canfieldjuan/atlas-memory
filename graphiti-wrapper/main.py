@@ -5,6 +5,7 @@ Exposes native graphiti-core API for Next.js client
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -21,6 +22,7 @@ from graphiti_core.prompts.models import Message
 from embedder_factory import EmbedderSettings, create_embedder
 from sentiment_similarity import SentimentSimilarityAnalyzer
 from llm_client_wrapper import create_retrying_llm_client
+from ollama_llm_client import create_ollama_llm_client
 from query_utils import (
     classify_query,
     expand_query,
@@ -55,7 +57,7 @@ class Settings(BaseSettings):
     neo4j_uri: str
     neo4j_user: str
     neo4j_password: str
-    
+
     # Embedder configuration (optional, defaults to OpenAI)
     embedder_provider: str = "openai"
     embedder_model: str | None = None
@@ -65,7 +67,10 @@ class Settings(BaseSettings):
     embedder_batch_size: int = 32
     embedder_embedding_dim: int | None = None
 
-    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).parent / '.env',
+        extra='ignore',
+    )
 
 
 def get_settings():
@@ -218,16 +223,25 @@ async def get_graphiti(
         logger.error("Failed to create embedder: %s", e)
         raise HTTPException(status_code=500, detail=f"Embedder creation failed: {e}")
 
-    # Create LLM client with retry/backoff for rate limits
-    llm_client = create_retrying_llm_client(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url,
-        model=settings.model_name,
-        max_retries=8,
-        base_delay=5.0,
-        max_delay=60.0,
-    )
-    logger.info("Created LLM client with retry logic (max_retries=8, base_delay=5s)")
+    # Create LLM client - use Ollama client if base_url points to Ollama
+    is_ollama = settings.openai_base_url and ("11434" in settings.openai_base_url or "ollama" in settings.openai_base_url.lower())
+
+    if is_ollama:
+        llm_client = create_ollama_llm_client(
+            model=settings.model_name or "hermes3:8b-q4",
+            base_url=settings.openai_base_url,
+        )
+        logger.info("Created Ollama LLM client: model=%s base_url=%s", settings.model_name, settings.openai_base_url)
+    else:
+        llm_client = create_retrying_llm_client(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            model=settings.model_name,
+            max_retries=8,
+            base_delay=5.0,
+            max_delay=60.0,
+        )
+        logger.info("Created OpenAI LLM client with retry logic (max_retries=8, base_delay=5s)")
 
     client = Graphiti(
         uri=settings.neo4j_uri,
@@ -720,7 +734,7 @@ class EnhancedSearchRequest(BaseModel):
     threshold: float = 0.3
     enable_expansion: bool = True
     enable_reranking: bool = True
-    reranker_type: str = "heuristic"
+    reranker_type: str = "cross-encoder"
     enable_deduplication: bool = True
     enable_decomposition: bool = True
     enable_fallback: bool = True

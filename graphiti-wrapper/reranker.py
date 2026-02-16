@@ -212,11 +212,16 @@ class CrossEncoderReranker:
         self,
         top_k: int = 10,
         model: Optional[str] = None,
+        device: Optional[str] = None,
     ):
         self.top_k = top_k
         self.model_name = model or get_env_str(
             "GRAPHRAG_CROSSENCODER_MODEL",
-            "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            "BAAI/bge-reranker-v2-m3"
+        )
+        self.device = device or get_env_str(
+            "GRAPHRAG_CROSSENCODER_DEVICE",
+            "cpu"
         )
 
     def _get_model(self):
@@ -224,8 +229,8 @@ class CrossEncoderReranker:
         if CrossEncoderReranker._model is None or CrossEncoderReranker._model_name != self.model_name:
             try:
                 from sentence_transformers import CrossEncoder
-                logger.info("Loading CrossEncoder model: %s", self.model_name)
-                CrossEncoderReranker._model = CrossEncoder(self.model_name)
+                logger.info("Loading CrossEncoder model: %s (device=%s)", self.model_name, self.device)
+                CrossEncoderReranker._model = CrossEncoder(self.model_name, device=self.device)
                 CrossEncoderReranker._model_name = self.model_name
             except ImportError:
                 logger.error("sentence-transformers not installed. Run: pip install sentence-transformers")
@@ -335,10 +340,18 @@ def create_reranker(
 
     if reranker_type == "none":
         return None
-    elif reranker_type == "cross-encoder" or reranker_type == "crossencoder":
+    elif reranker_type in ("cross-encoder", "crossencoder"):
         return CrossEncoderReranker(
             top_k=top_k,
             model=kwargs.get("model"),
+            device=kwargs.get("device"),
         )
-    else:
+    elif reranker_type == "heuristic":
         return HeuristicReranker(top_k=top_k)
+    else:
+        # Default to cross-encoder for unknown types
+        return CrossEncoderReranker(
+            top_k=top_k,
+            model=kwargs.get("model"),
+            device=kwargs.get("device"),
+        )
