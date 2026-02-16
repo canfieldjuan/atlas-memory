@@ -1,5 +1,5 @@
-# FineTune Lab - Graphiti GraphRAG Server (Render deployment)
-# Knowledge graph API with Neo4j backend
+# Atlas Memory — Graphiti GraphRAG Server (local deployment)
+# Knowledge graph API with Neo4j backend, 100% local inference
 
 FROM python:3.11-slim
 
@@ -21,15 +21,15 @@ COPY graphiti-wrapper/ ./graphiti-wrapper/
 # Set working directory for the server
 WORKDIR /app/graphiti-wrapper
 
-# Default port (Render sets PORT env var to 10000)
-ENV PORT=10000
+# Default port
+ENV PORT=8000
 
-# Expose port (informational only, actual port from $PORT)
-EXPOSE 10000
+# Expose port
+EXPOSE 8000
 
-# Health check using PORT env var
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
+# Health check — longer start-period for first-run model downloads
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Run graphiti server with PORT from environment
-CMD python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}
+# Run graphiti server
+CMD python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

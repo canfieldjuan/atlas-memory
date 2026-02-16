@@ -92,6 +92,56 @@ class EpisodeRequest(BaseModel):
     ingestion_date: str | None = None  # ISO 8601, defaults to now
 
 
+# --- Zep-compatible DTOs (used by Atlas RAGClient / MemoryClient / NightlySync) ---
+
+class MessageItem(BaseModel):
+    """A single message in a Zep-compatible POST /messages request."""
+    content: str
+    role_type: str = "user"  # user, assistant, system
+    role: str | None = None  # speaker name
+    source_description: str | None = None
+    timestamp: str | None = None  # ISO 8601
+
+
+class MessagesRequest(BaseModel):
+    """POST /messages request -- batch of messages to ingest as episodes."""
+    group_id: str = "atlas-conversations"
+    messages: list[MessageItem]
+
+
+class MessagesResponse(BaseModel):
+    """POST /messages response."""
+    success: bool
+    episodes_created: int = 0
+    episode_ids: list[str] = []
+    message: str = ""
+
+
+class ZepFact(BaseModel):
+    """A single fact in the Zep search response format."""
+    uuid: str = ""
+    name: str = ""
+    fact: str = ""
+    valid_at: str | None = None
+    invalid_at: str | None = None
+    created_at: str | None = None
+    expired_at: str | None = None
+
+
+class ZepSearchRequest(BaseModel):
+    """POST /search request -- Zep-compatible search."""
+    query: str
+    group_ids: list[str] | None = None
+    max_facts: int = 5
+    search_methods: list[str] = ["cosine_similarity"]
+    reranker: str = "cross_encoder"
+
+
+class ZepSearchResponse(BaseModel):
+    """POST /search response -- Zep-compatible fact list."""
+    facts: list[ZepFact] = []
+
+
 class EpisodeResponse(BaseModel):
     episode_id: str
     entities_created: int = 0
@@ -444,6 +494,191 @@ async def startup_event():
 async def health() -> HealthResponse:
     """Health check endpoint"""
     return HealthResponse(status="healthy")
+
+
+@app.get('/healthcheck')
+async def healthcheck() -> HealthResponse:
+    """Health check alias (Zep-compatible, used by Atlas clients)"""
+    return HealthResponse(status="healthy")
+
+
+@app.post('/messages')
+async def post_messages(
+    request: MessagesRequest,
+    graphiti: GraphitiDep,
+) -> MessagesResponse:
+    """
+    Zep-compatible message ingestion endpoint.
+
+    Used by:
+    - NightlyMemorySync (batch conversation sync)
+    - RAGClient.add_messages() (real-time, if enabled)
+    - MemoryClient.send_messages()
+    - seed_business_data.py
+
+    Each message becomes a graphiti episode with entity/relationship extraction.
+    Individual message failures are logged but don't fail the batch.
+    """
+    logger.info(
+        "POST /messages: group_id=%s, messages=%d",
+        request.group_id,
+        len(request.messages),
+    )
+
+    episode_ids: list[str] = []
+    errors = 0
+
+    for idx, msg in enumerate(request.messages):
+        try:
+            # Build episode body: "{role_type}: {content}"
+            body = f"{msg.role_type}: {msg.content}" if msg.role_type else msg.content
+
+            # Parse timestamp or use now
+            if msg.timestamp:
+                ref_time = datetime.fromisoformat(
+                    msg.timestamp.replace("Z", "+00:00")
+                )
+            else:
+                ref_time = datetime.now(timezone.utc)
+
+            # Source description: use provided, or build from role info
+            source_desc = (
+                msg.source_description
+                or f"atlas-{msg.role_type}"
+            )
+
+            result = await graphiti.add_episode(
+                name=f"msg-{request.group_id}-{idx}",
+                episode_body=body,
+                source_description=source_desc,
+                reference_time=ref_time,
+                group_id=request.group_id,
+                source=EpisodeType.message,
+            )
+
+            episode_uuid = (
+                result.episode.uuid
+                if hasattr(result, "episode")
+                else str(result)
+            )
+            episode_ids.append(episode_uuid)
+
+        except Exception as e:
+            errors += 1
+            logger.error(
+                "Failed to ingest message %d/%d: %s",
+                idx + 1,
+                len(request.messages),
+                e,
+            )
+
+    logger.info(
+        "POST /messages complete: %d/%d episodes created (%d errors)",
+        len(episode_ids),
+        len(request.messages),
+        errors,
+    )
+
+    return MessagesResponse(
+        success=len(episode_ids) > 0 or len(request.messages) == 0,
+        episodes_created=len(episode_ids),
+        episode_ids=episode_ids,
+        message=f"{len(episode_ids)} episodes created"
+        + (f", {errors} errors" if errors else ""),
+    )
+
+
+@app.post('/search')
+async def post_search(
+    request: ZepSearchRequest,
+    graphiti: GraphitiDep,
+) -> ZepSearchResponse:
+    """
+    Zep-compatible search endpoint (POST).
+
+    Used by:
+    - RAGClient.search() (reranker="cross_encoder")
+    - MemoryClient.search() (reranker="rrf")
+
+    Coexists with the existing GET /search (different HTTP method).
+    """
+    logger.info(
+        "POST /search: query=%s group_ids=%s max_facts=%d reranker=%s",
+        request.query[:80],
+        request.group_ids,
+        request.max_facts,
+        request.reranker,
+    )
+
+    try:
+        group_ids = request.group_ids or []
+
+        # Fetch more candidates than needed for reranking
+        fetch_limit = request.max_facts * 3
+
+        edges = await graphiti.search(
+            query=request.query,
+            group_ids=group_ids,
+            num_results=fetch_limit,
+        )
+
+        logger.info("Raw search returned %d edges", len(edges))
+
+        # Convert edges to fact dicts for reranking
+        edge_dicts = []
+        for edge in edges:
+            edge_dicts.append({
+                "uuid": edge.uuid,
+                "name": edge.name or "",
+                "fact": edge.fact or "",
+                "valid_at": None,
+                "invalid_at": None,
+                "created_at": edge.created_at.isoformat() if edge.created_at else None,
+                "expired_at": edge.expired_at.isoformat() if edge.expired_at else None,
+                "score": edge.score if hasattr(edge, "score") and edge.score else 0.5,
+            })
+
+        # Apply reranker
+        reranker_type = request.reranker.lower().replace("_", "-")
+        if reranker_type in ("cross-encoder", "cross_encoder", "crossencoder"):
+            reranker = create_reranker("cross-encoder", top_k=request.max_facts)
+        elif reranker_type == "rrf":
+            # RRF (Reciprocal Rank Fusion) -- use heuristic reranker as proxy
+            reranker = create_reranker("heuristic", top_k=request.max_facts)
+        else:
+            reranker = None
+
+        if reranker and edge_dicts:
+            candidates = [
+                {"text": e["fact"], "score": e["score"], "metadata": e}
+                for e in edge_dicts
+            ]
+            reranked = reranker.rerank(request.query, candidates)
+            edge_dicts = [r.metadata for r in reranked]
+            logger.info("After %s reranking: %d facts", reranker_type, len(edge_dicts))
+        else:
+            edge_dicts = edge_dicts[: request.max_facts]
+
+        # Convert to Zep fact format
+        facts = [
+            ZepFact(
+                uuid=e.get("uuid", ""),
+                name=e.get("name", ""),
+                fact=e.get("fact", ""),
+                valid_at=e.get("valid_at"),
+                invalid_at=e.get("invalid_at"),
+                created_at=e.get("created_at"),
+                expired_at=e.get("expired_at"),
+            )
+            for e in edge_dicts
+        ]
+
+        logger.info("POST /search returning %d facts", len(facts))
+        return ZepSearchResponse(facts=facts)
+
+    except Exception as e:
+        logger.error("POST /search error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get('/embedder/info')

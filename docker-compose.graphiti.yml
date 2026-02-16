@@ -1,0 +1,60 @@
+# Atlas Memory — Local GraphRAG Stack
+# Neo4j + Graphiti Wrapper (100% local, no cloud APIs)
+#
+# Usage:
+#   docker compose -f docker-compose.graphiti.yml up -d neo4j
+#   # Wait for healthy, then: python init_neo4j.py
+#   docker compose -f docker-compose.graphiti.yml up -d graphiti-wrapper
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: atlas-neo4j
+    ports:
+      - "7474:7474"   # HTTP browser
+      - "7687:7687"   # Bolt protocol
+    environment:
+      NEO4J_AUTH: neo4j/password123
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - graphiti-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  graphiti-wrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.graphiti
+    container_name: atlas-graphiti-wrapper
+    ports:
+      - "8001:8000"
+    env_file:
+      - graphiti-wrapper/.env
+    environment:
+      # Override for Docker networking
+      NEO4J_URI: bolt://neo4j:7687
+      OPENAI_BASE_URL: http://host.docker.internal:11434/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - graphiti-net
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  graphiti-net:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
