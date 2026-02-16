@@ -1,0 +1,3 @@
+"""
+Test security module initialization.
+"""

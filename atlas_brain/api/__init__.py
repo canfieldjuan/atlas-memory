@@ -5,10 +5,7 @@ API routers for Atlas Brain.
 from fastapi import APIRouter
 
 from .alerts import router as alerts_router
-try:
-    from .comms import router as comms_router
-except ImportError:
-    comms_router = None
+from .comms import router as comms_router
 from .devices import router as devices_router
 from .health import router as health_router
 from .llm import router as llm_router
@@ -35,8 +32,7 @@ router.include_router(query_router)
 router.include_router(models_router)
 router.include_router(devices_router)
 router.include_router(alerts_router)
-if comms_router is not None:
-    router.include_router(comms_router)
+router.include_router(comms_router)
 router.include_router(llm_router)
 router.include_router(session_router)
 router.include_router(vision_router)
