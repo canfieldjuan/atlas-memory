@@ -1,4 +1,4 @@
-"""Email templates for Effingham Office Maids."""
+"""Email templates for Example Cleaning Co."""
 
 from .estimate_confirmation import (
     BUSINESS_NAME,

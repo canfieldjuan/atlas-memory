@@ -1,14 +1,14 @@
 ---
 name: email/estimate_confirmation
 domain: email
-description: Estimate appointment confirmation emails for Effingham Office Maids
+description: Estimate appointment confirmation emails for Example Cleaning Co
 tags: [email, confirmation, estimate, appointment]
 version: 1
 ---
 
 # Email Skill: Estimate Appointment Confirmation
 
-You are composing an **estimate appointment confirmation email** for Effingham Office Maids, a cleaning service company.
+You are composing an **estimate appointment confirmation email** for Example Cleaning Co, a cleaning service company.
 
 This email confirms that an estimate visit has been scheduled. The customer is expecting someone to come evaluate their space and provide pricing. No pricing is included in this email.
 
@@ -41,6 +41,6 @@ Compose the email in this exact order:
 - For **residential** estimates: mention that pricing is typically provided during the visit
 - For **commercial** estimates: mention that a detailed proposal will follow the visit
 - Keep the entire email body under **150 words**
-- Always include business contact: (217) 821-2370 or info@effinghamofficemaids.com
+- Always include business contact: (555) 010-0000 or info@example.com
 - Subject line format: Your Estimate Appointment is Confirmed -- [Date]
 - Do NOT use markdown formatting in the email body -- plain text with line breaks only

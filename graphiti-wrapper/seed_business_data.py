@@ -22,23 +22,23 @@ import httpx
 
 BUSINESS_FACTS = [
     # Company basics
-    "The company name is Effingham Office Maids.",
-    "Effingham Office Maids is located at 1901 South 4th Street, Suite 1, Effingham, IL 60421.",
-    "Effingham Office Maids provides cleaning services for homes and offices.",
+    "The company name is Example Cleaning Co.",
+    "Example Cleaning Co is located at 123 Example St, Suite 1, Anytown, IL 60001.",
+    "Example Cleaning Co provides cleaning services for homes and offices.",
     "Cleaning schedules are based on customer needs: weekly, daily, biweekly, monthly, or quarterly.",
 
     # Team
-    "Juan Canfield is the owner and founder of Effingham Office Maids.",
+    "Jordan Smith is the owner and founder of Example Cleaning Co.",
     "Juan handles customer complaints, rescheduling, scheduling of new customers, and customer outreach.",
-    "Mayra Canfield is the manager at Effingham Office Maids. She manages employees and customers.",
+    "Morgan Smith is the manager at Example Cleaning Co. She manages employees and customers.",
 
     # Clients
-    "Menards is a client of Effingham Office Maids.",
-    "Ackra Builders is a client of Effingham Office Maids.",
-    "The American Red Cross is a client of Effingham Office Maids.",
-    "Mid Illinois Concrete is a client of Effingham Office Maids.",
-    "Heartland Human Services is a client of Effingham Office Maids.",
-    "Canarm Inc. is a client of Effingham Office Maids.",
+    "Acme Corporation is a client of Example Cleaning Co.",
+    "Globex Corporation is a client of Example Cleaning Co.",
+    "Umbrella Corp is a client of Example Cleaning Co.",
+    "Initech is a client of Example Cleaning Co.",
+    "Soylent Corp is a client of Example Cleaning Co.",
+    "Stark Industries is a client of Example Cleaning Co.",
 
     # Communication
     "The preferred communication method for residential clients is phone.",
@@ -47,7 +47,7 @@ BUSINESS_FACTS = [
     # Hours and scheduling
     "Office hours are 8:00 AM to 5:00 PM, Monday through Friday.",
     "Cleaning starts as early as 6:00 AM, Monday through Friday.",
-    "Effingham Office Maids is closed on Saturday and Sunday.",
+    "Example Cleaning Co is closed on Saturday and Sunday.",
 
     # Invoicing
     "Invoices are sent on the 1st of every month by email.",

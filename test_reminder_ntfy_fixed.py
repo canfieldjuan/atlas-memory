@@ -5,11 +5,11 @@ import os
 import sys
 
 os.environ["USE_REAL_TOOLS"] = "true"
-sys.path.insert(0, "/home/juan-canfield/Desktop/Atlas-LangGraph-Agents-ToolUse")
+sys.path.insert(0, "/home/user/Desktop/Atlas-LangGraph-Agents-ToolUse")
 
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv(Path("/home/juan-canfield/Desktop/Atlas/.env"), override=True)
+load_dotenv(Path("/home/user/Desktop/Atlas/.env"), override=True)
 
 
 async def setup_ntfy_alerts():

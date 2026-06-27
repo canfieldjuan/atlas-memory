@@ -302,8 +302,8 @@ aiohttp        # PersonaPlex server uses this
 
 ## References
 
-- PersonaPlex repo: `/home/juan-canfield/Desktop/live-translator/personaplex/`
+- PersonaPlex repo: `/home/user/Desktop/live-translator/personaplex/`
 - Model weights: `~/.cache/huggingface/hub/models--nvidia--personaplex-7b-v1/`
-- Custom server script: `/home/juan-canfield/Desktop/live-translator/personaplex/run_server.py`
+- Custom server script: `/home/user/Desktop/live-translator/personaplex/run_server.py`
 - Atlas comms docs: `docs/progress/external_comms_system.md`
 - Atlas scheduling docs: `docs/progress/scheduling_architecture.md`

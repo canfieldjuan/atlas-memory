@@ -77,7 +77,7 @@ Atlas moves from a monolithic "one model does everything" approach to a modular 
 ### 3. atlas-business (Priority: Medium)
 - **Purpose**: Business communications and management
 - **Model**: qwen3:14b (~9GB)
-- **Tools**: email, SMS, proposals, contacts, Effingham Maids specific
+- **Tools**: email, SMS, proposals, contacts, Example Cleaning specific
 - **Complexity**: High - context-aware communication
 
 ### 4. atlas-security (Priority: Medium)
@@ -205,7 +205,7 @@ class ModeManager:
 
 3. **Phase 3: atlas-business**
    - Email, SMS, proposals
-   - Effingham Maids specific features
+   - Example Cleaning specific features
 
 4. **Phase 4: atlas-security**
    - Camera integration

@@ -20,7 +20,7 @@ os.environ["ATLAS_PERSONAPLEX_PORT"] = "8998"
 from atlas_brain.services.personaplex.config import get_personaplex_config
 get_personaplex_config.cache_clear()
 
-from atlas_brain.comms.config import EFFINGHAM_MAIDS_CONTEXT
+from atlas_brain.comms.config import EXAMPLE_CLEANING_CONTEXT
 from atlas_brain.comms.personaplex_processor import (
     PersonaPlexProcessor,
     PersonaPlexCallState,
@@ -32,7 +32,7 @@ async def main():
     print("PersonaPlex Integration Test")
     print("=" * 60)
     print()
-    print("Business: Effingham Office Maids")
+    print("Business: Example Cleaning Co")
     print("This simulates the receptionist handling a booking call.")
     print()
 
@@ -40,8 +40,8 @@ async def main():
     call_state = PersonaPlexCallState(
         call_sid="test-call-001",
         from_number="+15551234567",
-        to_number="+16183683696",
-        context_id="effingham_maids",
+        to_number="+15555550100",
+        context_id="example_cleaning",
     )
 
     def on_audio(audio_b64: str):
@@ -50,7 +50,7 @@ async def main():
     # Create processor with business context
     processor = PersonaPlexProcessor(
         call_state=call_state,
-        business_context=EFFINGHAM_MAIDS_CONTEXT,
+        business_context=EXAMPLE_CLEANING_CONTEXT,
         on_audio_ready=on_audio,
     )
 
@@ -60,7 +60,7 @@ async def main():
     if not connected:
         print("ERROR: Failed to connect to PersonaPlex")
         print("Make sure the server is running:")
-        print("  cd /home/juan-canfield/Desktop/live-translator/personaplex")
+        print("  cd /home/user/Desktop/live-translator/personaplex")
         print("  python run_server.py --host 0.0.0.0 --port 8998")
         sys.exit(1)
 

@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Callable, Awaitable
 
-from .core.config import comms_settings, BusinessContext, EFFINGHAM_MAIDS_CONTEXT
+from .core.config import comms_settings, BusinessContext, EXAMPLE_CLEANING_CONTEXT
 from .context import get_context_router, ContextRouter
 from .core.protocols import (
     TelephonyProvider,
@@ -113,13 +113,13 @@ class CommsService:
         """Register business contexts from configuration."""
         router = self.context_router
 
-        # Register Effingham Office Maids if phone numbers are configured
-        if EFFINGHAM_MAIDS_CONTEXT.phone_numbers:
-            router.register_context(EFFINGHAM_MAIDS_CONTEXT)
+        # Register Example Cleaning Co if phone numbers are configured
+        if EXAMPLE_CLEANING_CONTEXT.phone_numbers:
+            router.register_context(EXAMPLE_CLEANING_CONTEXT)
             logger.info(
                 "Registered context: %s with numbers %s",
-                EFFINGHAM_MAIDS_CONTEXT.id,
-                EFFINGHAM_MAIDS_CONTEXT.phone_numbers,
+                EXAMPLE_CLEANING_CONTEXT.id,
+                EXAMPLE_CLEANING_CONTEXT.phone_numbers,
             )
 
         # TODO: Load additional contexts from database

@@ -1,14 +1,14 @@
 ---
 name: email/cleaning_confirmation
 domain: email
-description: Cleaning service confirmation emails for Effingham Office Maids
+description: Cleaning service confirmation emails for Example Cleaning Co
 tags: [email, confirmation, cleaning, booking]
 version: 1
 ---
 
 # Email Skill: Cleaning Service Confirmation
 
-You are composing a **cleaning service confirmation email** for Effingham Office Maids, a cleaning service company.
+You are composing a **cleaning service confirmation email** for Example Cleaning Co, a cleaning service company.
 
 This email confirms that a cleaning has been booked. The customer has already received pricing and agreed to the service. This email focuses on what to expect, not on cost.
 
@@ -43,6 +43,6 @@ Compose the email in this exact order:
 - For **residential**: warmer, more personal tone
 - For **commercial**: slightly more formal, mention point of contact if known
 - Keep the entire email body under **175 words**
-- Always include business contact: (217) 821-2370 or info@effinghamofficemaids.com
+- Always include business contact: (555) 010-0000 or info@example.com
 - Subject line format: Your [Service Type] is Confirmed -- [Date]
 - Do NOT use markdown formatting in the email body -- plain text with line breaks only

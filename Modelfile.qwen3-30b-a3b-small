@@ -1,7 +1,7 @@
 # Modelfile for Qwen3-30B-A3B-Instruct-2507 (Q4_K_S - 17GB)
 # Smaller quantization to fit alongside ASR server on single 24GB GPU
 
-FROM /home/juan-canfield/.lmstudio/models/bartowski/Qwen_Qwen3-30B-A3B-Instruct-2507-GGUF/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_S.gguf
+FROM /home/user/.lmstudio/models/bartowski/Qwen_Qwen3-30B-A3B-Instruct-2507-GGUF/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_S.gguf
 
 # Qwen3 chat template with tool calling support
 TEMPLATE """

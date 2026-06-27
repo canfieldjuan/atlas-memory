@@ -1,16 +1,16 @@
 """
-Email templates for Effingham Office Maids cleaning proposals.
+Email templates for Example Cleaning Co cleaning proposals.
 
 These are sent after an estimate/walkthrough has been completed,
 containing the detailed proposal for the client to review and approve.
 """
 
 # Business contact info (shared with estimate_confirmation)
-BUSINESS_NAME = "Effingham Office Maids"
-BUSINESS_ADDRESS = "1901 S. 4th Street, Effingham IL, 62401"
-BUSINESS_PHONE = "(217) 207-3097"
-BUSINESS_EMAIL = "info@effinghamofficemaids.com"
-BUSINESS_WEBSITE = "effinghamofficemaids.com"
+BUSINESS_NAME = "Example Cleaning Co"
+BUSINESS_ADDRESS = "123 Example St, Anytown IL, 60001"
+BUSINESS_PHONE = "(555) 010-0000"
+BUSINESS_EMAIL = "info@example.com"
+BUSINESS_WEBSITE = "example.com"
 
 # Key terms from proposal
 TERMS = (
@@ -72,7 +72,7 @@ We look forward to the opportunity to serve {client_name}. Please don't hesitate
 
 Best regards,
 
-Juan Canfield
+Jordan Smith
 {BUSINESS_NAME}
 {BUSINESS_ADDRESS}
 Phone: {BUSINESS_PHONE}

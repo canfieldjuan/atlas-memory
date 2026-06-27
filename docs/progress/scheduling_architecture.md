@@ -76,7 +76,7 @@ Add examples for direct booking:
 ```
 Query: "book an appointment for John Smith at 123 Main Street tomorrow at 9am"
 Action Type: tool_use
-Response: Calendar not configured. Set ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID.
+Response: Calendar not configured. Set ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID.
 ```
 - Intent parsing correctly detects `book_appointment` tool
 - Tool executes (config error is expected - calendar not configured in test env)
@@ -168,7 +168,7 @@ All modes now follow the same pattern as RECEPTIONIST (no dedicated agent, Atlas
 3. ~~Evaluate SignalWire vs NVIDIA model for inbound calls~~ DONE - PersonaPlex selected
 4. ~~Add cloud LLM provider~~ DONE - Together AI added (2026-01-20)
 5. ~~STT/TTS auto-load on startup~~ DONE - loads by default now
-6. ~~Configure calendar for production use~~ DONE - `ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID` set
+6. ~~Configure calendar for production use~~ DONE - `ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID` set
 
 ## PersonaPlex Integration Decision (2026-01-20)
 

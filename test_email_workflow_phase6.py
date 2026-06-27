@@ -15,11 +15,11 @@ import asyncio
 import os
 import sys
 
-sys.path.insert(0, "/home/juan-canfield/Desktop/Atlas-LangGraph-Agents-ToolUse")
+sys.path.insert(0, "/home/user/Desktop/Atlas-LangGraph-Agents-ToolUse")
 
 # Load environment variables from Atlas project .env file
 from dotenv import load_dotenv
-load_dotenv("/home/juan-canfield/Desktop/Atlas/.env")
+load_dotenv("/home/user/Desktop/Atlas/.env")
 
 
 # Database initialization flag
@@ -466,7 +466,7 @@ async def test_context_extraction():
 async def test_real_email_estimate():
     """Test 7: Real Email - Estimate."""
     print("\n" + "=" * 70)
-    print("TEST 7: Real Email - Estimate (canfieldjuan24@gmail.com)")
+    print("TEST 7: Real Email - Estimate (user@example.com)")
     print("=" * 70)
 
     os.environ["USE_REAL_TOOLS"] = "true"
@@ -482,7 +482,7 @@ async def test_real_email_estimate():
     # Generate draft
     result = await run_email_workflow(
         "send estimate",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Phase 6 Test - Estimate",
         client_type="residential",
         address="123 Phase 6 Test Street",
@@ -526,7 +526,7 @@ async def test_real_email_estimate():
 async def test_real_email_proposal():
     """Test 8: Real Email - Proposal."""
     print("\n" + "=" * 70)
-    print("TEST 8: Real Email - Proposal (canfieldjuan24@gmail.com)")
+    print("TEST 8: Real Email - Proposal (user@example.com)")
     print("=" * 70)
 
     os.environ["USE_REAL_TOOLS"] = "true"
@@ -544,7 +544,7 @@ async def test_real_email_proposal():
     # Generate draft
     result = await run_email_workflow(
         "send proposal",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Phase 6 Test Corp",
         client_type="business",
         contact_name="Test Contact",
@@ -609,7 +609,7 @@ async def test_real_email_proposal():
 async def test_real_email_generic():
     """Test 9: Real Email - Generic."""
     print("\n" + "=" * 70)
-    print("TEST 9: Real Email - Generic (canfieldjuan24@gmail.com)")
+    print("TEST 9: Real Email - Generic (user@example.com)")
     print("=" * 70)
 
     os.environ["USE_REAL_TOOLS"] = "true"
@@ -624,7 +624,7 @@ async def test_real_email_generic():
     # Generate draft
     result = await run_email_workflow(
         "send email",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         subject="Phase 6 Test - Generic Email",
         body="""Hello,
 
@@ -689,7 +689,7 @@ async def main():
     all_passed &= await test_context_extraction()
 
     # Real email tests (with delays to avoid rate limiting)
-    print("\n>>> REAL EMAIL TESTS (sending to canfieldjuan24@gmail.com)")
+    print("\n>>> REAL EMAIL TESTS (sending to user@example.com)")
 
     # Initialize database for email history and follow-up reminders
     db_ok = await initialize_database()
@@ -711,7 +711,7 @@ async def main():
         print("PHASE 6 VALIDATION: SOME TESTS FAILED")
     print("=" * 70)
 
-    print("\n>>> Check canfieldjuan24@gmail.com for 3 test emails:")
+    print("\n>>> Check user@example.com for 3 test emails:")
     print("    1. Estimate email (residential)")
     print("    2. Proposal email (business)")
     print("    3. Generic email")
