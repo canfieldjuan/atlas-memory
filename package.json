@@ -24,7 +24,7 @@
     "react-dom": "19.1.0"
   },
   "optionalDependencies": {
-    "py-ast": "^1.9.0"
+    "py-ast": "file:vendor/py-ast-1.9.0.tgz"
   },
   "devDependencies": {
     "@types/babel__traverse": "^7.20.6",
