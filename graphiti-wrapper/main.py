@@ -743,8 +743,20 @@ async def embedder_info(settings: Annotated[Settings, Depends(get_settings)]) ->
 # other ingestion paths (e.g. bulk document episodes, whose names are not
 # unique). Callers use deterministic episode names, so the key is stable.
 
-EPISODE_CLAIM_POLL_ATTEMPTS = 40
-EPISODE_CLAIM_POLL_INTERVAL_S = 0.25
+# How long a concurrent duplicate waits for the in-flight owner to finish before
+# returning a retryable 409. Kept well above typical episode-write latency so
+# moderately-slow writes resolve to success instead of a false 409 (callers treat
+# non-OK as a hard error), but bounded so a request never ties up a worker
+# indefinitely. Configurable via env.
+EPISODE_CLAIM_POLL_INTERVAL_S = float(
+    os.environ.get("GRAPHITI_EPISODE_CLAIM_POLL_INTERVAL_S", "0.5")
+)
+EPISODE_CLAIM_POLL_WAIT_S = float(
+    os.environ.get("GRAPHITI_EPISODE_CLAIM_POLL_WAIT_S", "60")
+)
+EPISODE_CLAIM_POLL_ATTEMPTS = max(
+    1, round(EPISODE_CLAIM_POLL_WAIT_S / EPISODE_CLAIM_POLL_INTERVAL_S)
+)
 # A claim with no episode_uuid older than this is treated as abandoned (e.g. the
 # owner process crashed mid-write) and released so another request can take over.
 # This MUST exceed the longest legitimate /episodes write, or a slow-but-alive
