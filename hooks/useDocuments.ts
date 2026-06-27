@@ -27,7 +27,9 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
 
   const fetchDocuments = useCallback(async () => {
     if (!userId) {
-      console.log('[useDocuments] No userId, skipping fetch');
+      console.log('[useDocuments] No userId, clearing documents');
+      setDocuments([]);
+      setError(null);
       return;
     }
 
@@ -79,7 +81,23 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
         documentsCount: data.documents?.length || 0,
         documents: data.documents
       });
-      setDocuments(data.documents || []);
+
+      // The documents API returns all of the user's documents, so apply the
+      // search / status / fileType filters client-side here to make the UI
+      // controls actually take effect.
+      let docs: Document[] = data.documents || [];
+      if (processed !== undefined) {
+        docs = docs.filter((doc) => doc.processed === processed);
+      }
+      if (fileType) {
+        docs = docs.filter((doc) => doc.fileType === fileType);
+      }
+      if (search) {
+        const query = search.toLowerCase();
+        docs = docs.filter((doc) => doc.filename.toLowerCase().includes(query));
+      }
+
+      setDocuments(docs);
     } catch (err) {
       // Handle timeout gracefully - don't block page load
       if (err instanceof Error && err.name === 'AbortError') {
@@ -126,7 +144,14 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
 
   // Auto-fetch on mount and when dependencies change
   useEffect(() => {
-    if (autoFetch && userId) {
+    if (!userId) {
+      // User signed out or auth was cleared while mounted — drop any
+      // previously-loaded documents so a prior user's filenames don't linger.
+      setDocuments([]);
+      setError(null);
+      return;
+    }
+    if (autoFetch) {
       console.log('[useDocuments] Auto-fetch triggered for userId:', userId);
       fetchDocuments();
     }
