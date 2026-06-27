@@ -23,6 +23,14 @@ from embedder_factory import EmbedderSettings, create_embedder
 from sentiment_similarity import SentimentSimilarityAnalyzer
 from llm_client_wrapper import create_retrying_llm_client
 from ollama_llm_client import create_ollama_llm_client
+
+# Used to detect uniqueness-constraint violations during episode idempotency
+# claims. Imported defensively so the module still loads if the driver internals
+# change; claims degrade to best-effort if this is unavailable.
+try:
+    from neo4j.exceptions import ConstraintError
+except Exception:  # pragma: no cover
+    ConstraintError = None
 from query_utils import (
     classify_query,
     expand_query,
@@ -722,26 +730,125 @@ async def embedder_info(settings: Annotated[Settings, Depends(get_settings)]) ->
     }
 
 
+# ----------------------------------------------------------------------------
+# Episode idempotency (cross-process)
+# ----------------------------------------------------------------------------
+# Duplicate episodes from retries or concurrent writes are prevented with a
+# dedicated, uniqueness-constrained marker label (:EpisodeIdempotency). An
+# atomic CREATE on that label elects exactly one "owner" per (name, group_id)
+# key — even across processes — and other requests wait for the owner's result.
+#
+# This is scoped to its OWN label, so it has zero effect on :Episodic nodes or
+# other ingestion paths (e.g. bulk document episodes, whose names are not
+# unique). Callers use deterministic episode names, so the key is stable.
+
+EPISODE_CLAIM_POLL_ATTEMPTS = 40
+EPISODE_CLAIM_POLL_INTERVAL_S = 0.25
+
+_idempotency_constraint_ready = False
+
+
+async def ensure_episode_idempotency_constraint(driver) -> None:
+    """Create the uniqueness constraint backing episode claims.
+
+    Idempotent and runs at most once per process. If it can't be created, claims
+    degrade to best-effort (the find_existing_episode fast path still dedupes
+    retries-after-success).
+    """
+    global _idempotency_constraint_ready
+    if _idempotency_constraint_ready:
+        return
+    try:
+        await driver.execute_query(
+            "CREATE CONSTRAINT episode_idempotency_key IF NOT EXISTS "
+            "FOR (r:EpisodeIdempotency) REQUIRE r.key IS UNIQUE"
+        )
+        _idempotency_constraint_ready = True
+    except Exception as e:
+        logger.warning(f"Could not ensure EpisodeIdempotency constraint: {e}")
+
+
+def _episode_key(name: str, group_id: str) -> str:
+    # \x1f (unit separator) can't appear in names/group_ids, so this is unambiguous.
+    return f"{group_id}\x1f{name}"
+
+
+def _is_constraint_error(e: Exception) -> bool:
+    if ConstraintError is not None and isinstance(e, ConstraintError):
+        return True
+    msg = str(e).lower()
+    return 'constraint' in msg or 'already exists' in msg
+
+
+async def claim_episode_key(driver, key: str) -> tuple[bool, str | None]:
+    """Atomically claim an episode idempotency key.
+
+    Returns (claimed, existing_uuid):
+      - (True, None): caller won the claim and must add the episode, then call
+        complete_episode_claim() on success / release_episode_claim() on failure.
+      - (False, uuid|None): another request holds the claim; uuid is the finished
+        episode if available, else None while that request is still in flight.
+    """
+    try:
+        await driver.execute_query(
+            "CREATE (r:EpisodeIdempotency {key: $key, episode_uuid: null, "
+            "created_at: datetime()})",
+            key=key,
+        )
+        return True, None
+    except Exception as e:
+        if not _is_constraint_error(e):
+            raise  # genuine error — do not mistake it for a duplicate claim
+        return False, await read_episode_claim_uuid(driver, key)
+
+
+async def read_episode_claim_uuid(driver, key: str) -> str | None:
+    result = await driver.execute_query(
+        "MATCH (r:EpisodeIdempotency {key: $key}) RETURN r.episode_uuid AS uuid",
+        key=key,
+    )
+    return result.records[0]['uuid'] if result.records else None
+
+
+async def complete_episode_claim(driver, key: str, episode_uuid: str) -> None:
+    """Record the created episode uuid on the claim so waiters can read it."""
+    try:
+        await driver.execute_query(
+            "MATCH (r:EpisodeIdempotency {key: $key}) SET r.episode_uuid = $uuid",
+            key=key, uuid=episode_uuid,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to finalize episode claim {key}: {e}")
+
+
+async def release_episode_claim(driver, key: str) -> None:
+    """Release an un-finalized claim so a later retry can re-attempt the write."""
+    try:
+        await driver.execute_query(
+            "MATCH (r:EpisodeIdempotency {key: $key}) "
+            "WHERE r.episode_uuid IS NULL DELETE r",
+            key=key,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to release episode claim {key}: {e}")
+
+
 @app.post('/episodes')
 async def add_episode(
     request: EpisodeRequest,
     graphiti: GraphitiDep
 ) -> EpisodeResponse:
-    """Add an episode to the knowledge graph"""
+    """Add an episode to the knowledge graph (idempotent on name + group_id)."""
+    key = _episode_key(request.name, request.group_id)
+
+    def ingestion_date() -> datetime:
+        return datetime.fromisoformat(request.ingestion_date.replace('Z', '+00:00')) \
+            if request.ingestion_date else datetime.now()
+
     try:
-        # Idempotency (best-effort): if an episode with this (name, group_id)
-        # already exists (e.g. a retry after a partial or transient failure),
-        # return it instead of creating a duplicate. Episode names from the sync
-        # service are deterministic, so this is a safe natural idempotency key.
-        #
-        # NOTE: this check + add is not atomic, so two *truly concurrent*
-        # requests for the same (name, group_id) could both pass and create
-        # duplicates. That race is already mitigated upstream — the GraphRAG sync
-        # service dedupes concurrent same-key emits in-memory before they reach
-        # here, and this is a single-server deployment. For hard cross-process
-        # atomicity, add a Neo4j uniqueness constraint on Episodic(name,
-        # group_id); that is intentionally NOT done here because other ingestion
-        # paths (e.g. bulk document episodes) do not guarantee unique names.
+        await ensure_episode_idempotency_constraint(graphiti.driver)
+
+        # Fast path: episode already created (e.g. a retry after success).
         existing_uuid = await find_existing_episode(
             graphiti.driver, request.name, request.group_id
         )
@@ -750,57 +857,79 @@ async def add_episode(
                 f"Episode already exists, skipping duplicate add: {request.name} "
                 f"for group {request.group_id} (uuid={existing_uuid})"
             )
-            ingestion_date = datetime.fromisoformat(request.ingestion_date.replace('Z', '+00:00')) \
-                if request.ingestion_date else datetime.now()
             # Re-apply metadata so a retry that previously failed mid-write still
             # converges to the intended state (add_episode_metadata is idempotent).
             await add_episode_metadata(
-                graphiti.driver,
-                existing_uuid,
-                request.is_historical,
-                request.data_source_type,
-                ingestion_date,
+                graphiti.driver, existing_uuid,
+                request.is_historical, request.data_source_type, ingestion_date(),
             )
+            return EpisodeResponse(episode_id=existing_uuid, entities_created=0, relations_created=0)
+
+        # Atomically claim the key so truly-concurrent same-key writes (even
+        # across processes) cannot both create an episode.
+        claimed, claimed_uuid = await claim_episode_key(graphiti.driver, key)
+
+        if not claimed:
+            # Another request owns this key — wait briefly for it to finish.
+            for _ in range(EPISODE_CLAIM_POLL_ATTEMPTS):
+                if claimed_uuid:
+                    break
+                await asyncio.sleep(EPISODE_CLAIM_POLL_INTERVAL_S)
+                claimed_uuid = await read_episode_claim_uuid(graphiti.driver, key)
+            if not claimed_uuid:
+                # Owner still in flight, or it failed and released the claim —
+                # check for a finished episode as a last resort.
+                claimed_uuid = await find_existing_episode(
+                    graphiti.driver, request.name, request.group_id
+                )
+            if claimed_uuid:
+                logger.info(
+                    f"Episode claimed concurrently; returning existing uuid={claimed_uuid}"
+                )
+                await add_episode_metadata(
+                    graphiti.driver, claimed_uuid,
+                    request.is_historical, request.data_source_type, ingestion_date(),
+                )
+                return EpisodeResponse(episode_id=claimed_uuid, entities_created=0, relations_created=0)
+            # Couldn't confirm a result — signal a retryable condition rather
+            # than risk creating a duplicate.
+            raise HTTPException(
+                status_code=409,
+                detail="Episode write already in progress; retry later",
+            )
+
+        # We own the claim — create the episode, then finalize (or release) it.
+        try:
+            reference_time = datetime.fromisoformat(request.reference_time.replace('Z', '+00:00'))
+            result = await graphiti.add_episode(
+                name=request.name,
+                episode_body=request.episode_body,
+                source_description=request.source_description,
+                reference_time=reference_time,
+                group_id=request.group_id,
+                source=EpisodeType.text,  # Default to text type
+            )
+
+            episode_uuid = result.episode.uuid if hasattr(result, 'episode') else str(result)
+            logger.info(f"Added episode: {request.name} for group {request.group_id}")
+
+            await add_episode_metadata(
+                graphiti.driver, episode_uuid,
+                request.is_historical, request.data_source_type, ingestion_date(),
+            )
+            await complete_episode_claim(graphiti.driver, key, episode_uuid)
+
             return EpisodeResponse(
-                episode_id=existing_uuid,
-                entities_created=0,
-                relations_created=0,
+                episode_id=episode_uuid,
+                entities_created=0,  # graphiti-core doesn't return this
+                relations_created=0,  # graphiti-core doesn't return this
             )
-
-        # Parse ISO 8601 timestamp
-        reference_time = datetime.fromisoformat(request.reference_time.replace('Z', '+00:00'))
-
-        # Add episode using graphiti-core's native API
-        result = await graphiti.add_episode(
-            name=request.name,
-            episode_body=request.episode_body,
-            source_description=request.source_description,
-            reference_time=reference_time,
-            group_id=request.group_id,
-            source=EpisodeType.text,  # Default to text type
-        )
-
-        episode_uuid = result.episode.uuid if hasattr(result, 'episode') else str(result)
-        logger.info(f"Added episode: {request.name} for group {request.group_id}")
-
-        # Add custom temporal metadata
-        ingestion_date = datetime.fromisoformat(request.ingestion_date.replace('Z', '+00:00')) \
-            if request.ingestion_date else datetime.now()
-
-        await add_episode_metadata(
-            graphiti.driver,
-            episode_uuid,
-            request.is_historical,
-            request.data_source_type,
-            ingestion_date,
-        )
-
-        # Return response matching client expectations
-        return EpisodeResponse(
-            episode_id=episode_uuid,
-            entities_created=0,  # graphiti-core doesn't return this
-            relations_created=0,  # graphiti-core doesn't return this
-        )
+        except Exception:
+            # Release the claim so a later retry can re-create the episode.
+            await release_episode_claim(graphiti.driver, key)
+            raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error adding episode: {e}")
         raise HTTPException(status_code=500, detail=str(e))
