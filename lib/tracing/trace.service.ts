@@ -13,11 +13,14 @@
  *   GRAPHRAG_TRACE_URL       Base URL of the trace backend.
  *                            Default: https://finetunelab.com
  *                            (falls back to NEXT_PUBLIC_BASE_URL / NEXT_PUBLIC_APP_URL).
- *   TRACE_SERVICE_TOKEN      Dedicated bearer token for the traces API. Required
- *                            to turn tracing on. For the Fine-Tune Labs backend,
- *                            set this to its analytics token. NOTE: this token is
- *                            sent to GRAPHRAG_TRACE_URL — do NOT reuse a Supabase
- *                            service-role key or other broad secret here.
+ *   TRACE_SERVICE_TOKEN      Dedicated API key for the traces endpoint. Required
+ *                            to turn tracing on. Sent as the `X-API-Key` header
+ *                            (matching atlas_brain/services/tracing.py) and also
+ *                            as `Authorization: Bearer`. For the Fine-Tune Labs
+ *                            backend, set this to its analytics API key. NOTE:
+ *                            this token is sent to GRAPHRAG_TRACE_URL — do NOT
+ *                            reuse a Supabase service-role key or other broad
+ *                            secret here.
  *   GRAPHRAG_TRACING_ENABLED Must be "true" to enable. Tracing is OFF by default
  *                            because it sends span data and the bearer token to an
  *                            external endpoint — it never auto-enables.
@@ -231,6 +234,11 @@ async function post(payload: Record<string, unknown>): Promise<void> {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
+        // The Fine-Tune Labs trace ingestion endpoint authenticates external
+        // clients via X-API-Key (see atlas_brain/services/tracing.py, which
+        // POSTs to the same /api/analytics/traces route). We also send
+        // Authorization: Bearer to remain compatible with the web app's scheme.
+        'X-API-Key': token,
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },

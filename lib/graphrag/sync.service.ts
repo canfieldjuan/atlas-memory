@@ -84,13 +84,18 @@ export class GraphSyncService {
       return;
     }
 
-    // Mark as processed
+    // Optimistically mark as processed so concurrent duplicate emits are
+    // deduped while the async work is in flight.
     this.processedKeys.add(event.idempotencyKey);
     console.log(`[GraphSync] Event queued: ${event.type} for message ${event.messageId}`);
 
     // Queue for async processing (don't block caller)
     this.processEventAsync(event).catch(error => {
       console.error('[GraphSync] Error processing event:', error);
+      // Release the key on failure so a later retry isn't skipped as a
+      // duplicate. Otherwise a transient Graphiti outage would permanently
+      // drop this citation/judgment/error event.
+      this.processedKeys.delete(event.idempotencyKey);
       // Don't re-throw - we don't want to break the caller's flow
     });
   }
