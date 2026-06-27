@@ -4,6 +4,7 @@ Exposes native graphiti-core API for Next.js client
 """
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -746,7 +747,13 @@ EPISODE_CLAIM_POLL_ATTEMPTS = 40
 EPISODE_CLAIM_POLL_INTERVAL_S = 0.25
 # A claim with no episode_uuid older than this is treated as abandoned (e.g. the
 # owner process crashed mid-write) and released so another request can take over.
-EPISODE_CLAIM_STALE_SECONDS = 120
+# This MUST exceed the longest legitimate /episodes write, or a slow-but-alive
+# write could be wrongly reclaimed and duplicated. Large document ingestion can
+# run for a long time (the TS client's request timeout defaults to 3,600,000 ms
+# = 1h), so the default here is just over that. Override via env if needed.
+EPISODE_CLAIM_STALE_SECONDS = int(
+    os.environ.get("GRAPHITI_EPISODE_CLAIM_STALE_SECONDS", "3900")
+)
 
 _idempotency_constraint_ready = False
 
@@ -858,15 +865,21 @@ async def release_stale_claim(driver, key: str, max_age_seconds: int) -> bool:
         return False
 
 
-async def delete_episode_claim(driver, key: str) -> None:
-    """Unconditionally delete a claim (used when its episode no longer exists)."""
+async def delete_claim_if_uuid(driver, key: str, expected_uuid: str) -> None:
+    """Delete a claim only if it still points at expected_uuid.
+
+    Used when taking over a claim whose episode was deleted. Scoping the delete
+    to the observed uuid prevents a takeover from erasing a *newer* claim that
+    another writer created concurrently (which would have a different/null uuid).
+    """
     try:
         await driver.execute_query(
-            "MATCH (r:EpisodeIdempotency {key: $key}) DELETE r",
-            key=key,
+            "MATCH (r:EpisodeIdempotency {key: $key}) "
+            "WHERE r.episode_uuid = $uuid DELETE r",
+            key=key, uuid=expected_uuid,
         )
     except Exception as e:
-        logger.warning(f"Failed to delete episode claim {key}: {e}")
+        logger.warning(f"Failed to delete stale claim {key} (uuid={expected_uuid}): {e}")
 
 
 async def delete_episode_claim_by_uuid(driver, episode_uuid: str) -> None:
@@ -1006,7 +1019,7 @@ async def add_episode(
                     )
                     return EpisodeResponse(episode_id=claimed_uuid, entities_created=0, relations_created=0)
                 logger.info(f"Claim {key} points at missing episode {claimed_uuid}; reclaiming")
-                await delete_episode_claim(graphiti.driver, key)
+                await delete_claim_if_uuid(graphiti.driver, key, claimed_uuid)
                 claimed_uuid = None
                 continue
 
