@@ -4,11 +4,12 @@
  */
 
 import { graphragService } from '../../graphrag';
+import type { TraceContext } from '../../tracing/types';
 
 export async function executeGraphRAGQuery(
   args: { query: string; maxResults?: number },
   userId?: string,
-  traceContext?: unknown
+  traceContext?: TraceContext
 ): Promise<unknown> {
   if (!userId) {
     throw new Error('User ID is required to query knowledge graph. Please ensure you are logged in.');
