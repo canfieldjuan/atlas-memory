@@ -52,7 +52,10 @@ export async function GET(request: NextRequest) {
     const filters = {
       search: searchParams.get('search') || undefined,
       fileType: searchParams.get('fileType') || undefined,
-      processed: processedParam === null ? undefined : processedParam === 'true',
+      // Only accept the exact strings "true"/"false"; ignore anything else so a
+      // malformed value (e.g. ?processed=foo) doesn't silently filter to false.
+      processed:
+        processedParam === 'true' ? true : processedParam === 'false' ? false : undefined,
     };
 
     const documents = await documentStorage.getUserDocuments(supabase, user.id, filters);

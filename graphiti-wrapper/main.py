@@ -729,10 +729,19 @@ async def add_episode(
 ) -> EpisodeResponse:
     """Add an episode to the knowledge graph"""
     try:
-        # Idempotency: if an episode with this (name, group_id) already exists
-        # (e.g. a retry after a partial or transient failure), return it instead
-        # of creating a duplicate. Episode names from the sync service are
-        # deterministic, so this is a safe natural idempotency key.
+        # Idempotency (best-effort): if an episode with this (name, group_id)
+        # already exists (e.g. a retry after a partial or transient failure),
+        # return it instead of creating a duplicate. Episode names from the sync
+        # service are deterministic, so this is a safe natural idempotency key.
+        #
+        # NOTE: this check + add is not atomic, so two *truly concurrent*
+        # requests for the same (name, group_id) could both pass and create
+        # duplicates. That race is already mitigated upstream — the GraphRAG sync
+        # service dedupes concurrent same-key emits in-memory before they reach
+        # here, and this is a single-server deployment. For hard cross-process
+        # atomicity, add a Neo4j uniqueness constraint on Episodic(name,
+        # group_id); that is intentionally NOT done here because other ingestion
+        # paths (e.g. bulk document episodes) do not guarantee unique names.
         existing_uuid = await find_existing_episode(
             graphiti.driver, request.name, request.group_id
         )

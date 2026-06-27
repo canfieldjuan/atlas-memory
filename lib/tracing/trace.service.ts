@@ -2,10 +2,12 @@
  * Trace Service — emits GraphRAG operation spans to the Fine-Tune Labs
  * analytics backend (finetunelab.com).
  *
- * GraphRAG threads a `TraceContext` through search/retrieval. This client opens
- * a span (`startTrace` / `createChildSpan`) and closes it (`endTrace`), POSTing
- * both to `${TRACE_BASE_URL}/api/analytics/traces` in the same wire format the
- * backend ingests. It is non-blocking (fire-and-forget) and degrades
+ * GraphRAG threads a `TraceContext` through search/retrieval. `startTrace` /
+ * `createChildSpan` create the span context locally (no network call), and
+ * `endTrace` POSTs the single terminal record to
+ * `${GRAPHRAG_TRACE_URL}/api/analytics/traces` in the wire format the backend
+ * ingests. (We deliberately don't emit a separate "running" record — see the
+ * note in startTrace.) It is non-blocking (fire-and-forget) and degrades
  * gracefully: any config or network error is swallowed so tracing never breaks
  * the main retrieval flow.
  *
@@ -89,7 +91,8 @@ function createNoOpContext(params: StartTraceParams): TraceContext {
 }
 
 /**
- * Start a new span and emit a "running" record to the backend.
+ * Create a new span context. This does NOT post anything to the backend — only
+ * `endTrace` emits a record (the terminal one). See the NOTE in the body for why.
  */
 export async function startTrace(params: StartTraceParams): Promise<TraceContext> {
   if (!isTracingEnabled()) return createNoOpContext(params);
