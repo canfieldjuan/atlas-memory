@@ -47,15 +47,14 @@ export function truncateObject(obj: unknown, maxSizeKB: number): unknown {
   const maxChars = maxSizeKB * 1024;
   const truncated = jsonStr.slice(0, maxChars);
 
-  try {
-    return JSON.parse(truncated + '"}');
-  } catch {
-    return {
-      _truncated: true,
-      _originalSizeKB: sizeKB,
-      _preview: truncated
-    };
-  }
+  // A sliced JSON prefix is not valid JSON, so don't attempt to re-parse it.
+  // Return the structured truncation payload directly (matches this helper's
+  // documented "fallback structure" contract).
+  return {
+    _truncated: true,
+    _originalSizeKB: sizeKB,
+    _preview: truncated,
+  };
 }
 
 /**

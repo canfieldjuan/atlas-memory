@@ -13,10 +13,14 @@
  *   GRAPHRAG_TRACE_URL       Base URL of the trace backend.
  *                            Default: https://finetunelab.com
  *                            (falls back to NEXT_PUBLIC_BASE_URL / NEXT_PUBLIC_APP_URL).
- *   TRACE_SERVICE_TOKEN      Bearer token for the traces API. Falls back to
- *                            SUPABASE_SERVICE_ROLE_KEY (what the backend expects).
- *   GRAPHRAG_TRACING_ENABLED Set to "false" to disable. Otherwise tracing is
- *                            enabled whenever an auth token is present.
+ *   TRACE_SERVICE_TOKEN      Dedicated bearer token for the traces API. Required
+ *                            to turn tracing on. For the Fine-Tune Labs backend,
+ *                            set this to its analytics token. NOTE: this token is
+ *                            sent to GRAPHRAG_TRACE_URL — do NOT reuse a Supabase
+ *                            service-role key or other broad secret here.
+ *   GRAPHRAG_TRACING_ENABLED Must be "true" to enable. Tracing is OFF by default
+ *                            because it sends span data and the bearer token to an
+ *                            external endpoint — it never auto-enables.
  */
 import type {
   TraceContext,
@@ -38,12 +42,17 @@ function getBaseUrl(): string {
 }
 
 function getAuthToken(): string | undefined {
-  return process.env.TRACE_SERVICE_TOKEN || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Dedicated trace token only. We deliberately do NOT fall back to
+  // SUPABASE_SERVICE_ROLE_KEY: this token is sent to an external endpoint
+  // (GRAPHRAG_TRACE_URL), so reusing a broad service-role secret would risk
+  // leaking it off-box.
+  return process.env.TRACE_SERVICE_TOKEN;
 }
 
 function isTracingEnabled(): boolean {
-  if (process.env.GRAPHRAG_TRACING_ENABLED === 'false') return false;
-  return Boolean(getAuthToken());
+  // Opt-in only. Tracing transmits span data and the bearer token to an external
+  // endpoint, so it must be explicitly enabled AND given a dedicated token.
+  return process.env.GRAPHRAG_TRACING_ENABLED === 'true' && Boolean(getAuthToken());
 }
 
 /** Format: trace_{timestamp}_{random} */

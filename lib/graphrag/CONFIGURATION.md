@@ -104,21 +104,26 @@ GRAPHRAG_ENABLED=false
 
 ## Tracing / Observability
 
-GraphRAG retrieval spans are sent to the Fine-Tune Labs analytics backend
+GraphRAG retrieval spans can be sent to the Fine-Tune Labs analytics backend
 (`finetunelab.com`) via `lib/tracing/trace.service.ts`. Tracing is non-blocking
 and degrades gracefully — if it's disabled or the backend is unreachable,
-retrieval is unaffected. It activates automatically once an auth token is set.
+retrieval is unaffected.
+
+**Tracing is OFF by default** and never auto-enables. Because it transmits span
+data *and the bearer token* to an external endpoint, it requires an explicit
+opt-in flag **and** a dedicated trace token:
 
 ```bash
-# Base URL of the trace backend (default: https://finetunelab.com)
-GRAPHRAG_TRACE_URL=https://finetunelab.com
-
-# Bearer token for POST /api/analytics/traces
-# (falls back to SUPABASE_SERVICE_ROLE_KEY, which is what the backend expects)
-TRACE_SERVICE_TOKEN=your_token
-
-# Set to "false" to turn tracing off entirely
+# Required: must be exactly "true" to enable tracing
 GRAPHRAG_TRACING_ENABLED=true
+
+# Required: dedicated bearer token for POST /api/analytics/traces.
+# SECURITY: this token is sent to GRAPHRAG_TRACE_URL — use a token scoped to the
+# trace endpoint. Do NOT reuse SUPABASE_SERVICE_ROLE_KEY or any broad secret.
+TRACE_SERVICE_TOKEN=your_dedicated_trace_token
+
+# Optional: base URL of the trace backend (default: https://finetunelab.com)
+GRAPHRAG_TRACE_URL=https://finetunelab.com
 ```
 
 Spans are only emitted when a caller threads a `TraceContext` through

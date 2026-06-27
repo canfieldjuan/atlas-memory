@@ -640,8 +640,10 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  // Show help on first load
-  console.log('🔍 Logger diagnostics available! Type __logger.help() for commands');
+  // Show help on first load (development only — avoid console noise in production)
+  if (typeof process === 'undefined' || process.env.NODE_ENV !== 'production') {
+    console.log('🔍 Logger diagnostics available! Type __logger.help() for commands');
+  }
 }
 
 // Export convenience functions for easier usage
