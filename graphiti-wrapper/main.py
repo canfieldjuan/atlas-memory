@@ -774,8 +774,10 @@ async def ensure_episode_idempotency_constraint(driver) -> None:
 
 
 def _episode_key(name: str, group_id: str) -> str:
-    # \x1f (unit separator) can't appear in names/group_ids, so this is unambiguous.
-    return f"{group_id}\x1f{name}"
+    # Length-prefix group_id so the (group_id, name) tuple maps to a unique key
+    # even if either field contains the separator. A plain concatenation would
+    # collide, e.g. (group_id='a', name='b:c') vs (group_id='a:b', name='c').
+    return f"{len(group_id)}:{group_id}:{name}"
 
 
 def _is_constraint_error(e: Exception) -> bool:
@@ -854,6 +856,43 @@ async def release_stale_claim(driver, key: str, max_age_seconds: int) -> bool:
     except Exception as e:
         logger.warning(f"Failed to release stale episode claim {key}: {e}")
         return False
+
+
+async def delete_episode_claim(driver, key: str) -> None:
+    """Unconditionally delete a claim (used when its episode no longer exists)."""
+    try:
+        await driver.execute_query(
+            "MATCH (r:EpisodeIdempotency {key: $key}) DELETE r",
+            key=key,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to delete episode claim {key}: {e}")
+
+
+async def delete_episode_claim_by_uuid(driver, episode_uuid: str) -> None:
+    """Delete the claim that points at a given episode (called when the episode
+    is deleted) so a later write with the same name/group_id is treated as new.
+    """
+    try:
+        await driver.execute_query(
+            "MATCH (r:EpisodeIdempotency {episode_uuid: $uuid}) DELETE r",
+            uuid=episode_uuid,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to delete episode claim for uuid {episode_uuid}: {e}")
+
+
+async def episode_exists(driver, episode_uuid: str) -> bool:
+    try:
+        result = await driver.execute_query(
+            "MATCH (e:Episodic {uuid: $uuid}) RETURN e.uuid AS uuid LIMIT 1",
+            uuid=episode_uuid,
+        )
+        return bool(result.records)
+    except Exception as e:
+        logger.warning(f"Failed to check episode existence for {episode_uuid}: {e}")
+        # Assume it exists on error so we don't wrongly recreate a duplicate.
+        return True
 
 
 async def _create_episode_node(graphiti, request: "EpisodeRequest", ingestion_date: datetime) -> str:
@@ -956,12 +995,20 @@ async def add_episode(
                     graphiti.driver, request.name, request.group_id
                 )
             if claimed_uuid:
-                logger.info(f"Episode claimed concurrently; returning existing uuid={claimed_uuid}")
-                await add_episode_metadata(
-                    graphiti.driver, claimed_uuid,
-                    request.is_historical, request.data_source_type, ingestion_date(),
-                )
-                return EpisodeResponse(episode_id=claimed_uuid, entities_created=0, relations_created=0)
+                # Guard against a claim left behind after its episode was deleted:
+                # if the referenced episode no longer exists, drop the dangling
+                # claim and take over so the content is actually re-created.
+                if await episode_exists(graphiti.driver, claimed_uuid):
+                    logger.info(f"Episode claimed concurrently; returning existing uuid={claimed_uuid}")
+                    await add_episode_metadata(
+                        graphiti.driver, claimed_uuid,
+                        request.is_historical, request.data_source_type, ingestion_date(),
+                    )
+                    return EpisodeResponse(episode_id=claimed_uuid, entities_created=0, relations_created=0)
+                logger.info(f"Claim {key} points at missing episode {claimed_uuid}; reclaiming")
+                await delete_episode_claim(graphiti.driver, key)
+                claimed_uuid = None
+                continue
 
             # No result and the owner appears stuck. If its claim is stale (owner
             # crashed), release it and loop to take over; otherwise stop.
@@ -1509,6 +1556,10 @@ async def delete_episode(
         # Get and delete the episodic node
         episode = await EpisodicNode.get_by_uuid(graphiti.driver, episode_id)
         await episode.delete(graphiti.driver)
+
+        # Drop any idempotency claim pointing at this episode so a future write
+        # with the same name/group_id is treated as new rather than a duplicate.
+        await delete_episode_claim_by_uuid(graphiti.driver, episode_id)
 
         logger.info(f"Deleted episode: {episode_id}")
         return {"message": "Episode deleted", "success": True}
