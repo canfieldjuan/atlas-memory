@@ -205,6 +205,10 @@ export class SearchService {
           ragContext: {
             contextTokens: Math.ceil(contextTokens),
             retrievalLatencyMs: queryTime,
+            graphUsed: finalEdges.length > 0, // knowledge graph contributed context
+            nodesRetrieved: finalEdges.length,
+            chunksUsed: finalEdges.length,
+            relevanceScore: avgRelevance,
             chunkDeduplicationCount: 0, // Graphiti handles deduplication internally
             cacheHitCount: 0, // No caching layer yet
           }

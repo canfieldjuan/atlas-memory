@@ -10,9 +10,10 @@
  * the main retrieval flow.
  *
  * Configuration (environment variables):
- *   GRAPHRAG_TRACE_URL       Base URL of the trace backend.
- *                            Default: https://finetunelab.com
- *                            (falls back to NEXT_PUBLIC_BASE_URL / NEXT_PUBLIC_APP_URL).
+ *   GRAPHRAG_TRACE_URL       Base URL of the trace backend. Optional; defaults
+ *                            to https://finetunelab.com when unset. (No fallback
+ *                            to the app's own URL — there is no local traces
+ *                            route, so that would only produce 404s.)
  *   TRACE_SERVICE_TOKEN      Dedicated API key for the traces endpoint. Required
  *                            to turn tracing on. Sent as the `X-API-Key` header
  *                            (matching atlas_brain/services/tracing.py) and also
@@ -36,11 +37,11 @@ const DEFAULT_TRACE_URL = 'https://finetunelab.com';
 const POST_TIMEOUT_MS = 5000;
 
 function getBaseUrl(): string {
-  const url =
-    process.env.GRAPHRAG_TRACE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    DEFAULT_TRACE_URL;
+  // Honor only an explicit GRAPHRAG_TRACE_URL; otherwise use the Fine-Tune Labs
+  // default. We deliberately do NOT fall back to NEXT_PUBLIC_BASE_URL /
+  // NEXT_PUBLIC_APP_URL: there is no local /api/analytics/traces route, so a
+  // deployment's own app URL would just 404 every span.
+  const url = process.env.GRAPHRAG_TRACE_URL || DEFAULT_TRACE_URL;
   return url.replace(/\/+$/, '');
 }
 
@@ -111,29 +112,11 @@ export async function startTrace(params: StartTraceParams): Promise<TraceContext
     operationType: params.operationType,
   };
 
-  // Fire-and-forget — never block the caller on telemetry.
-  void post({
-    trace_id: context.traceId,
-    span_id: context.spanId,
-    parent_trace_id: context.parentSpanId || null,
-    span_name: params.spanName,
-    user_id: context.userId,
-    start_time: context.startTime.toISOString(),
-    operation_type: params.operationType,
-    model_name: params.modelName || null,
-    model_provider: params.modelProvider || null,
-    conversation_id: context.conversationId || null,
-    message_id: context.messageId || null,
-    session_tag: params.sessionTag || null,
-    status: 'running',
-    metadata: {
-      ...(params.metadata || {}),
-      environment: context.environment,
-      tags: context.tags,
-      previous_message_id: context.previousMessageId,
-    },
-  });
-
+  // NOTE: we intentionally do NOT emit a "running" record here. GraphRAG
+  // retrieval is fire-and-forget and a caller may never reach endTrace() if the
+  // search throws, which would leave a permanent dangling "running" span. We
+  // only emit the terminal record in endTrace(), so a failed/abandoned span
+  // simply produces no row rather than a stuck one.
   return context;
 }
 
@@ -245,15 +228,27 @@ async function post(payload: Record<string, unknown>): Promise<void> {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    if (!res.ok) {
+    if (!res.ok && traceLogsEnabled()) {
       console.error(`[Trace Service] POST ${url} failed: ${res.status}`);
     }
   } catch (err) {
-    // Graceful degradation — tracing must never break the main flow.
-    console.error('[Trace Service] Error sending trace:', err);
+    // Graceful degradation — tracing must never break the main flow. Gate the
+    // log so a down/misconfigured backend can't spam production logs.
+    if (traceLogsEnabled()) {
+      console.error('[Trace Service] Error sending trace:', err);
+    }
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Whether to surface trace-delivery failures. Tracing is best-effort, so we
+ * stay quiet in production unless GRAPHRAG_TRACE_DEBUG is explicitly set.
+ */
+function traceLogsEnabled(): boolean {
+  if (process.env.GRAPHRAG_TRACE_DEBUG === 'true') return true;
+  return process.env.NODE_ENV !== 'production';
 }
 
 export const traceService = {

@@ -36,6 +36,7 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
       latestRequestId.current += 1;
       setDocuments([]);
       setError(null);
+      setLoading(false);
       return;
     }
 
@@ -67,14 +68,19 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        // Always clear the timer, even if fetch rejects (network error/abort),
+        // so it can't fire later and abort an unrelated request.
+        clearTimeout(timeoutId);
+      }
       console.log('[useDocuments] Response status:', response.status, response.statusText);
 
       if (!response.ok) {
@@ -167,10 +173,13 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
     if (!userId) {
       // User signed out or auth was cleared while mounted — invalidate any
       // in-flight request and drop loaded documents so a prior user's
-      // filenames don't linger.
+      // filenames don't linger. Also clear loading: the in-flight request's
+      // finally now skips setLoading(false) (its id is stale), so without this
+      // the UI could be stuck loading forever.
       latestRequestId.current += 1;
       setDocuments([]);
       setError(null);
+      setLoading(false);
       return;
     }
     if (autoFetch) {
