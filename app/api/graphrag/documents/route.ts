@@ -45,7 +45,17 @@ export async function GET(request: NextRequest) {
 
     console.log('[GraphRAG Documents API] User authenticated:', user.id);
 
-    const documents = await documentStorage.getUserDocuments(supabase, user.id);
+    // Parse optional filters from the query string and apply them server-side
+    // (so they take effect before the row cap, not just on the returned page).
+    const { searchParams } = new URL(request.url);
+    const processedParam = searchParams.get('processed');
+    const filters = {
+      search: searchParams.get('search') || undefined,
+      fileType: searchParams.get('fileType') || undefined,
+      processed: processedParam === null ? undefined : processedParam === 'true',
+    };
+
+    const documents = await documentStorage.getUserDocuments(supabase, user.id, filters);
 
     console.log('[GraphRAG Documents API] Documents retrieved:', {
       count: documents.length,

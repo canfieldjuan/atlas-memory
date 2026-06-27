@@ -102,22 +102,9 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRet
         return;
       }
 
-      // The documents API returns all of the user's documents, so apply the
-      // search / status / fileType filters client-side here to make the UI
-      // controls actually take effect.
-      let docs: Document[] = data.documents || [];
-      if (processed !== undefined) {
-        docs = docs.filter((doc) => doc.processed === processed);
-      }
-      if (fileType) {
-        docs = docs.filter((doc) => doc.fileType === fileType);
-      }
-      if (search) {
-        const query = search.toLowerCase();
-        docs = docs.filter((doc) => doc.filename.toLowerCase().includes(query));
-      }
-
-      setDocuments(docs);
+      // Filtering (search/processed/fileType) is applied server-side by the
+      // documents route before the row cap, so the response is already filtered.
+      setDocuments(data.documents || []);
     } catch (err) {
       // Ignore failures from superseded requests so they can't clobber the
       // current state.
