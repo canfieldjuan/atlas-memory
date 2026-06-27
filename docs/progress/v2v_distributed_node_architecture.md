@@ -47,7 +47,7 @@ Build node awareness into the V2V pipeline to support distributed edge devices (
 |     transcript: "turn on the lights",    |
 |     node_id: "kitchen",                  |
 |     speaker_id: "uuid-juan",             |
-|     speaker_name: "Juan"                 |
+|     speaker_name: "Alex"                 |
 |   }                                      |
 +------------------------------------------+
             |
@@ -82,8 +82,8 @@ Agent understands: "lights" = kitchen lights
 ## Vision + Voice Corroboration
 
 Voice heard in: kitchen (node_id)
-Speaker ID: Juan
-Camera sees: Juan in kitchen
+Speaker ID: Alex
+Camera sees: Alex in kitchen
 
 Corroborated location with high confidence passed to agent.
 

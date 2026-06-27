@@ -61,8 +61,8 @@ Build a comprehensive AI-powered communications system that can:
 │  │           Business Contexts                             │ │
 │  │                                                         │ │
 │  │  ┌─────────────────────┐  ┌─────────────────────────┐ │ │
-│  │  │  Example Office   │  │      Personal           │ │ │
-│  │  │      Maids          │  │                         │ │ │
+│  │  │  Example Cleaning │  │      Personal           │ │ │
+│  │  │      Co             │  │                         │ │ │
 │  │  │                     │  │  - Personal contacts    │ │ │
 │  │  │  - Business hours   │  │  - Family/friends mode  │ │ │
 │  │  │  - Services/pricing │  │  - Message taking       │ │ │

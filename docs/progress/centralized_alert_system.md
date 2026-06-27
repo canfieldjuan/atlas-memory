@@ -176,7 +176,7 @@ class SecurityAlertEvent:
     source_id: str  # Camera ID
     timestamp: datetime
     detection_type: str  # person_detected, motion, vehicle, etc.
-    label: Optional[str]  # known:Juan, unknown, etc.
+    label: Optional[str]  # known:Alex, unknown, etc.
     confidence: float
     metadata: dict[str, Any]
 ```

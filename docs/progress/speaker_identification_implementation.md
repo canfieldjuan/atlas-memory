@@ -157,7 +157,7 @@ embedding_cache_ttl: int = 300           # Cache embeddings (seconds)
 ```bash
 # 1. Start enrollment
 POST /api/v1/speaker/enroll/start
-{"user_name": "Juan"}
+{"user_name": "Alex"}
 # Returns: {"session_id": "abc123", "samples_needed": 3}
 
 # 2. Add voice samples (repeat 3x)
@@ -168,14 +168,14 @@ POST /api/v1/speaker/enroll/sample
 # 3. Complete enrollment
 POST /api/v1/speaker/enroll/complete
 {"session_id": "abc123"}
-# Returns: {"success": true, "user_id": "uuid", "message": "Enrolled Juan"}
+# Returns: {"success": true, "user_id": "uuid", "message": "Enrolled Alex"}
 ```
 
 ### Verification
 ```bash
 POST /api/v1/speaker/verify
 {"audio_base64": "..."}
-# Returns: {"matched": true, "speaker": "Juan", "confidence": 0.89}
+# Returns: {"matched": true, "speaker": "Alex", "confidence": 0.89}
 ```
 
 ## Success Criteria

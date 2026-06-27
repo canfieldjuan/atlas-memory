@@ -90,11 +90,11 @@ class TestBuildSystemPrompt:
         """Brief response style generates correct preference text."""
         svc = self._make_svc()
         ctx = MemoryContext(
-            user_name="Juan",
+            user_name="Alex",
             response_style="brief",
         )
         result = svc.build_system_prompt(ctx)
-        assert "User: Juan" in result
+        assert "User: Alex" in result
         assert "short and concise" in result
         assert "## User" in result
 
@@ -102,7 +102,7 @@ class TestBuildSystemPrompt:
         """Detailed response style generates correct preference text."""
         svc = self._make_svc()
         ctx = MemoryContext(
-            user_name="Juan",
+            user_name="Alex",
             response_style="detailed",
         )
         result = svc.build_system_prompt(ctx)
@@ -145,9 +145,9 @@ class TestBuildSystemPrompt:
     def test_people_in_context(self):
         """People present appear in Context section."""
         svc = self._make_svc()
-        ctx = MemoryContext(people_present=["Juan", "Sarah"])
+        ctx = MemoryContext(people_present=["Alex", "Sarah"])
         result = svc.build_system_prompt(ctx)
-        assert "People present: Juan, Sarah" in result
+        assert "People present: Alex, Sarah" in result
 
     def test_history_in_prompt(self):
         """Conversation history appears in Recent Conversation section."""
@@ -346,7 +346,7 @@ class TestStoreConversationIntegration:
             session_id=sid,
             user_content="What time is it?",
             assistant_content="It is 3:00 PM.",
-            speaker_id="Juan",
+            speaker_id="Alex",
             turn_type="conversation",
         )
 
@@ -355,7 +355,7 @@ class TestStoreConversationIntegration:
         assert len(turns) == 2
         assert turns[0].role == "user"
         assert turns[0].content == "What time is it?"
-        assert turns[0].speaker_id == "Juan"
+        assert turns[0].speaker_id == "Alex"
         assert turns[1].role == "assistant"
         assert turns[1].content == "It is 3:00 PM."
 
@@ -367,8 +367,8 @@ class TestStoreConversationIntegration:
 
         await svc.store_conversation(
             session_id=sid,
-            user_content="Remember my name is Juan",
-            assistant_content="Got it, Juan!",
+            user_content="Remember my name is Alex",
+            assistant_content="Got it, Alex!",
             turn_type="conversation",
         )
 
@@ -379,4 +379,4 @@ class TestStoreConversationIntegration:
             include_physical=False,
         )
         assert len(ctx.conversation_history) == 2
-        assert "Juan" in ctx.conversation_history[0]["content"]
+        assert "Alex" in ctx.conversation_history[0]["content"]

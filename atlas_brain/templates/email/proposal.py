@@ -128,7 +128,7 @@ We can't wait to help make your home sparkle! Let us know if you have any questi
 
 Warm regards,
 
-Juan
+Jordan Smith
 {BUSINESS_NAME}
 {BUSINESS_PHONE}
 {BUSINESS_EMAIL}

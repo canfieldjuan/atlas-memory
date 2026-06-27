@@ -29,7 +29,7 @@ BUSINESS_FACTS = [
 
     # Team
     "Jordan Smith is the owner and founder of Example Cleaning Co.",
-    "Juan handles customer complaints, rescheduling, scheduling of new customers, and customer outreach.",
+    "Morgan Smith handles customer complaints, rescheduling, scheduling of new customers, and customer outreach.",
     "Morgan Smith is the manager at Example Cleaning Co. She manages employees and customers.",
 
     # Clients

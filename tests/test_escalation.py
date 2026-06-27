@@ -86,7 +86,7 @@ class TestUnknownFaceEmptyHouse:
     @pytest.mark.asyncio
     async def test_known_person_entered_empty_house_routine(self):
         evaluator = _make_evaluator()
-        msg = {"event": "person_entered", "is_known": True, "name": "Juan"}
+        msg = {"event": "person_entered", "is_known": True, "name": "Alex"}
 
         with _mock_presence("empty"), _mock_config():
             result = await evaluator.evaluate("person_entered", msg, "office")
@@ -127,7 +127,7 @@ class TestRapidUnknowns:
         msg = {"event": "unknown_face", "name": "unknown_001"}
 
         # Occupied house -- should still escalate on rapid unknowns
-        with _mock_presence("identified", ["Juan"]), _mock_config(rapid_unknowns_threshold=3):
+        with _mock_presence("identified", ["Alex"]), _mock_config(rapid_unknowns_threshold=3):
             # Fire 3 events in quick succession
             for i in range(2):
                 result = await evaluator.evaluate("unknown_face", msg, "office")
@@ -146,7 +146,7 @@ class TestRapidUnknowns:
         evaluator = _make_evaluator()
         msg = {"event": "unknown_face", "name": "unknown_001"}
 
-        with _mock_presence("identified", ["Juan"]), _mock_config(rapid_unknowns_threshold=3):
+        with _mock_presence("identified", ["Alex"]), _mock_config(rapid_unknowns_threshold=3):
             # Trigger escalation with 3 events
             for _ in range(3):
                 await evaluator.evaluate("unknown_face", msg, "office")
@@ -161,7 +161,7 @@ class TestRapidUnknowns:
         evaluator = _make_evaluator()
         msg = {"event": "unknown_face", "name": "unknown_001"}
 
-        with _mock_presence("identified", ["Juan"]), _mock_config(rapid_unknowns_threshold=3):
+        with _mock_presence("identified", ["Alex"]), _mock_config(rapid_unknowns_threshold=3):
             # Only 2 events -- below threshold
             for _ in range(2):
                 result = await evaluator.evaluate("unknown_face", msg, "office")
@@ -175,7 +175,7 @@ class TestRapidUnknowns:
         evaluator = _make_evaluator()
         msg = {"event": "unknown_face", "name": "unknown_001"}
 
-        with _mock_presence("identified", ["Juan"]), _mock_config(
+        with _mock_presence("identified", ["Alex"]), _mock_config(
             rapid_unknowns_threshold=3, rapid_unknowns_window_seconds=60,
         ):
             # Manually insert old timestamps that are outside the window
@@ -266,9 +266,9 @@ class TestEnhancedAck:
             "event": "person_entered",
             "narration": {
                 "classify": "routine",
-                "hint": "Juan entered (confidence: 92.3%)",
+                "hint": "Alex entered (confidence: 92.3%)",
                 "occupancy_state": "identified",
-                "occupants": ["Juan"],
+                "occupants": ["Alex"],
             },
         }
         assert ack["narration"]["classify"] == "routine"

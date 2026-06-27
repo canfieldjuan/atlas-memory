@@ -27,18 +27,18 @@ class TestContextAggregatorOutput:
     def test_people_present(self):
         """People added via update_person appear in the string."""
         ctx = self._make_aggregator()
-        ctx.update_person("p1", name="Juan", confidence=0.9)
+        ctx.update_person("p1", name="Alex", confidence=0.9)
         result = ctx.build_context_string()
-        assert "Juan" in result
+        assert "Alex" in result
         assert "People present:" in result
 
     def test_multiple_people(self):
         """Multiple people are comma-separated."""
         ctx = self._make_aggregator()
-        ctx.update_person("p1", name="Juan", confidence=0.9)
+        ctx.update_person("p1", name="Alex", confidence=0.9)
         ctx.update_person("p2", name="Sarah", confidence=0.85)
         result = ctx.build_context_string()
-        assert "Juan" in result
+        assert "Alex" in result
         assert "Sarah" in result
 
     def test_visible_objects(self):
@@ -76,7 +76,7 @@ class TestContextAggregatorOutput:
         """All sections appear when data is present."""
         ctx = self._make_aggregator()
         ctx.set_room("office")
-        ctx.update_person("p1", name="Juan", confidence=0.9)
+        ctx.update_person("p1", name="Alex", confidence=0.9)
         ctx.update_object("monitor", confidence=0.8)
         ctx.add_audio_event("keyboard", confidence=0.7)
         ctx.update_device("light.office", "Office Light", {"on": True})
@@ -84,7 +84,7 @@ class TestContextAggregatorOutput:
         result = ctx.build_context_string()
         assert "Current time:" in result
         assert "Location: office" in result
-        assert "Juan" in result
+        assert "Alex" in result
         assert "monitor" in result
         assert "keyboard" in result
         assert "Office Light" in result

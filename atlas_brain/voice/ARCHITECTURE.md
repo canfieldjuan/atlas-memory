@@ -43,7 +43,7 @@ When speech is detected and transcribed, V2V publishes an event:
 {
     "transcript": "turn on the lights",
     "speaker_id": "uuid-of-user",
-    "speaker_name": "Juan",
+    "speaker_name": "Alex",
     "speaker_confidence": 0.98,
     "session_id": "...",
     "audio_bytes": <optional>,
