@@ -69,3 +69,10 @@ nohup.out
 
 # YOLO model weights
 yolov8*.pt
+
+# Node / TypeScript (GraphRAG web layer)
+node_modules/
+dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo

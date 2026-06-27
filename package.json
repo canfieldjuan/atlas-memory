@@ -1,0 +1,38 @@
+{
+  "name": "atlas-memory-graphrag-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TypeScript GraphRAG layer (library + React components + Next.js API routes) for Atlas Memory",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "typecheck:lib": "tsc --noEmit -p tsconfig.lib.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "author": "Juan Canfield",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@babel/types": "^7.28.5",
+    "@supabase/supabase-js": "^2.75.0",
+    "lucide-react": "^0.545.0",
+    "mammoth": "^1.11.0",
+    "next": "^15.5.7",
+    "pdf-parse": "^1.1.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "optionalDependencies": {
+    "py-ast": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.20.6",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "vitest": "^4.0.3"
+  }
+}

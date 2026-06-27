@@ -167,7 +167,11 @@ export class DocumentStorage {
   /**
    * Get all documents for a user (excluding content field for performance)
    */
-  async getUserDocuments(supabase: SupabaseClient, userId: string): Promise<Document[]> {
+  async getUserDocuments(
+    supabase: SupabaseClient,
+    userId: string,
+    filters?: { search?: string; processed?: boolean; fileType?: string },
+  ): Promise<Document[]> {
     console.log('[DocumentStorage] getUserDocuments called for user:', userId);
     const startTime = Date.now();
 
@@ -193,10 +197,26 @@ export class DocumentStorage {
       // Query with all essential fields INCLUDING neo4j_episode_ids for status tracking
       console.log('[DocumentStorage] Fetching documents with all essential fields...');
       const queryStart = Date.now();
-      const result = await supabase
+      // Apply filters in the query (before the row cap) so users with more than
+      // 100 documents can still find older matches.
+      let query = supabase
         .from('documents')
         .select('id, user_id, filename, file_type, upload_path, document_hash, processed, neo4j_episode_ids, version, parent_id, created_at, updated_at, metadata')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+
+      if (filters?.processed !== undefined) {
+        query = query.eq('processed', filters.processed);
+      }
+      if (filters?.fileType) {
+        query = query.eq('file_type', filters.fileType);
+      }
+      if (filters?.search) {
+        // Case-insensitive partial match on filename; escape LIKE wildcards.
+        const escaped = filters.search.replace(/[%_\\]/g, (c) => `\\${c}`);
+        query = query.ilike('filename', `%${escaped}%`);
+      }
+
+      const result = await query
         .order('created_at', { ascending: false })
         .limit(100);
 

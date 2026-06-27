@@ -5,6 +5,7 @@
 import { ToolDefinition } from '../types';
 import { graphragQueryConfig } from '../config';
 import { executeGraphRAGQuery } from './graphrag-query.tool';
+import type { TraceContext } from '../../tracing/types';
 
 const graphragQueryTool: ToolDefinition = {
   name: 'query_knowledge_graph',
@@ -75,7 +76,7 @@ CRITICAL: When presenting knowledge graph results, provide comprehensive analysi
         maxResults: maxResults as number | undefined
       },
       userId,
-      traceContext
+      traceContext as TraceContext | undefined
     );
   },
 };

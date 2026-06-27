@@ -3,9 +3,38 @@
  * Uses py-ast to parse Python code and extract structured entities
  */
 
-import { parse } from 'py-ast';
 import { BaseASTParser, type ASTParseResult } from './base-ast-parser';
 import type { CodeEntity, CodeRelation, CodeChunk } from '../../types';
+
+// `py-ast` is an OPTIONAL dependency (only needed to AST-parse Python source
+// documents). It is loaded lazily through a non-literal specifier so that:
+//   1. a clean `npm install` / `npm ci` never fails if the package can't be
+//      fetched (it lives in optionalDependencies), and
+//   2. the TypeScript build doesn't require its types to be present.
+// If it can't be loaded, parse() throws and CodeParser falls back to its
+// regex-based text extraction — so Python parsing degrades gracefully.
+type PyAstParse = (source: string, options?: unknown) => unknown;
+
+let pyAstParse: PyAstParse | null | undefined;
+
+async function loadPyAstParse(): Promise<PyAstParse> {
+  if (pyAstParse === undefined) {
+    // Typed as `string` (not a literal) so the bundler/TS won't hard-require it.
+    const moduleName: string = 'py-ast';
+    try {
+      const mod: { parse?: PyAstParse } = await import(/* webpackIgnore: true */ moduleName);
+      pyAstParse = typeof mod.parse === 'function' ? mod.parse : null;
+    } catch {
+      pyAstParse = null;
+    }
+  }
+  if (!pyAstParse) {
+    throw new Error(
+      "Python AST parsing requires the optional 'py-ast' package, which is not installed",
+    );
+  }
+  return pyAstParse;
+}
 
 // Type definitions for Python AST nodes from py-ast library
 interface PythonASTArg {
@@ -50,7 +79,8 @@ export class PythonASTParser extends BaseASTParser {
     const startTime = Date.now();
 
     try {
-      this.ast = parse(this.content) as unknown as PythonAST;
+      const parsePython = await loadPyAstParse();
+      this.ast = parsePython(this.content) as unknown as PythonAST;
     } catch (error) {
       console.error('[PythonASTParser] Parse error:', error);
       throw error;

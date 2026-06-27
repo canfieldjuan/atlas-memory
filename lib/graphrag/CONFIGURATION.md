@@ -102,6 +102,34 @@ GRAPHRAG_SKIP_WEBSEARCH=false
 GRAPHRAG_ENABLED=false
 ```
 
+## Tracing / Observability
+
+GraphRAG retrieval spans can be sent to the Fine-Tune Labs analytics backend
+(`finetunelab.com`) via `lib/tracing/trace.service.ts`. Tracing is non-blocking
+and degrades gracefully — if it's disabled or the backend is unreachable,
+retrieval is unaffected.
+
+**Tracing is OFF by default** and never auto-enables. Because it transmits span
+data *and the bearer token* to an external endpoint, it requires an explicit
+opt-in flag **and** a dedicated trace token:
+
+```bash
+# Required: must be exactly "true" to enable tracing
+GRAPHRAG_TRACING_ENABLED=true
+
+# Required: dedicated bearer token for POST /api/analytics/traces.
+# SECURITY: this token is sent to GRAPHRAG_TRACE_URL — use a token scoped to the
+# trace endpoint. Do NOT reuse SUPABASE_SERVICE_ROLE_KEY or any broad secret.
+TRACE_SERVICE_TOKEN=your_dedicated_trace_token
+
+# Optional: base URL of the trace backend (default: https://finetunelab.com)
+GRAPHRAG_TRACE_URL=https://finetunelab.com
+```
+
+Spans are only emitted when a caller threads a `TraceContext` through
+(`searchService.search(query, userId, parentContext)` /
+`graphragService.enhancePrompt(..., { traceContext })`).
+
 ## How It Works
 
 1. **User sends message** → Query classification checks skip patterns

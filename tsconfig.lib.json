@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "lib/graphrag/**/*.ts",
+    "lib/utils/**/*.ts",
+    "lib/tracing/**/*.ts",
+    "lib/vendor/**/*.ts",
+    "lib/supabaseAdmin.ts",
+    "lib/supabaseClient.ts"
+  ]
+}

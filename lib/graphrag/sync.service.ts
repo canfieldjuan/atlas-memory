@@ -84,13 +84,21 @@ export class GraphSyncService {
       return;
     }
 
-    // Mark as processed
+    // Optimistically mark as processed so concurrent duplicate emits are
+    // deduped while the async work is in flight.
     this.processedKeys.add(event.idempotencyKey);
     console.log(`[GraphSync] Event queued: ${event.type} for message ${event.messageId}`);
 
     // Queue for async processing (don't block caller)
     this.processEventAsync(event).catch(error => {
       console.error('[GraphSync] Error processing event:', error);
+      // Release the key on failure so a later retry isn't skipped here.
+      // Otherwise a transient Graphiti outage would permanently drop this
+      // citation/judgment/error event. Retries are safe against duplicates:
+      // episode names are deterministic and graphiti-wrapper's /episodes
+      // endpoint is idempotent on (name, group_id), so a partial-then-retried
+      // write returns the existing episode instead of creating a second one.
+      this.processedKeys.delete(event.idempotencyKey);
       // Don't re-throw - we don't want to break the caller's flow
     });
   }

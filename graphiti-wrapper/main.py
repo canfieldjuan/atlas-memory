@@ -367,6 +367,35 @@ async def get_episode_temporal_metadata(driver, episode_uuid: str) -> dict | Non
         return None
 
 
+async def find_existing_episode(driver, name: str, group_id: str) -> str | None:
+    """Return the uuid of an existing episode with this (name, group_id), if any.
+
+    Enables idempotent /episodes writes. Callers (e.g. the GraphRAG sync service)
+    use deterministic episode names — "citation-{messageId}-{docId}",
+    "judgment-{messageId}", "error-{messageId}" — so a retry after a partial or
+    transient failure finds the already-created episode and skips re-adding it
+    instead of creating a duplicate.
+    """
+    try:
+        result = await driver.execute_query(
+            """
+            MATCH (e:Episodic {name: $name, group_id: $group_id})
+            RETURN e.uuid as uuid
+            LIMIT 1
+            """,
+            name=name,
+            group_id=group_id,
+        )
+        if result.records and len(result.records) > 0:
+            return result.records[0]['uuid']
+        return None
+    except Exception as e:
+        logger.warning(
+            f"Episode idempotency check failed for {name}/{group_id}: {e}"
+        )
+        return None
+
+
 async def add_episode_metadata(
     driver,
     episode_uuid: str,
@@ -700,6 +729,44 @@ async def add_episode(
 ) -> EpisodeResponse:
     """Add an episode to the knowledge graph"""
     try:
+        # Idempotency (best-effort): if an episode with this (name, group_id)
+        # already exists (e.g. a retry after a partial or transient failure),
+        # return it instead of creating a duplicate. Episode names from the sync
+        # service are deterministic, so this is a safe natural idempotency key.
+        #
+        # NOTE: this check + add is not atomic, so two *truly concurrent*
+        # requests for the same (name, group_id) could both pass and create
+        # duplicates. That race is already mitigated upstream — the GraphRAG sync
+        # service dedupes concurrent same-key emits in-memory before they reach
+        # here, and this is a single-server deployment. For hard cross-process
+        # atomicity, add a Neo4j uniqueness constraint on Episodic(name,
+        # group_id); that is intentionally NOT done here because other ingestion
+        # paths (e.g. bulk document episodes) do not guarantee unique names.
+        existing_uuid = await find_existing_episode(
+            graphiti.driver, request.name, request.group_id
+        )
+        if existing_uuid:
+            logger.info(
+                f"Episode already exists, skipping duplicate add: {request.name} "
+                f"for group {request.group_id} (uuid={existing_uuid})"
+            )
+            ingestion_date = datetime.fromisoformat(request.ingestion_date.replace('Z', '+00:00')) \
+                if request.ingestion_date else datetime.now()
+            # Re-apply metadata so a retry that previously failed mid-write still
+            # converges to the intended state (add_episode_metadata is idempotent).
+            await add_episode_metadata(
+                graphiti.driver,
+                existing_uuid,
+                request.is_historical,
+                request.data_source_type,
+                ingestion_date,
+            )
+            return EpisodeResponse(
+                episode_id=existing_uuid,
+                entities_created=0,
+                relations_created=0,
+            )
+
         # Parse ISO 8601 timestamp
         reference_time = datetime.fromisoformat(request.reference_time.replace('Z', '+00:00'))
 
