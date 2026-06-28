@@ -41,6 +41,6 @@ Compose the email in this exact order:
 - For **residential** estimates: mention that pricing is typically provided during the visit
 - For **commercial** estimates: mention that a detailed proposal will follow the visit
 - Keep the entire email body under **150 words**
-- Always include business contact: (555) 010-0000 or info@example.com
+- Always include the business's contact phone and email exactly as provided in the context; never invent or hard-code contact details
 - Subject line format: Your Estimate Appointment is Confirmed -- [Date]
 - Do NOT use markdown formatting in the email body -- plain text with line breaks only

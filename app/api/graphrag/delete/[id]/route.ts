@@ -28,8 +28,15 @@ export async function DELETE(
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xxxxxxxxxxxxx.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key-placeholder';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[GraphRAG] Supabase environment variables are not configured');
+      return NextResponse.json(
+        { error: 'Server misconfigured: Supabase environment variables are missing' },
+        { status: 500 }
+      );
+    }
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {

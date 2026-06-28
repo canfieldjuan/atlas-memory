@@ -19,8 +19,15 @@ export async function GET(request: NextRequest) {
 
     console.log('[GraphRAG Documents API] Auth header present:', authHeader.substring(0, 20) + '...');
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xxxxxxxxxxxxx.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key-placeholder';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[GraphRAG] Supabase environment variables are not configured');
+      return NextResponse.json(
+        { error: 'Server misconfigured: Supabase environment variables are missing' },
+        { status: 500 }
+      );
+    }
 
     // Create Supabase client WITH auth header (required for RLS)
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {

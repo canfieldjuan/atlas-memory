@@ -225,7 +225,7 @@ EXAMPLE_CLEANING_CONTEXT = BusinessContext(
     id="example_cleaning",
     name="Example Cleaning Co",
     description="Professional commercial and office cleaning service in Anytown, IL",
-    phone_numbers=["+15555550100"],  # SignalWire number
+    phone_numbers=[],  # Set via ATLAS_COMMS_EXAMPLE_CLEANING_PHONE_NUMBERS (comma-separated E.164)
     greeting=(
         "Thank you for calling Example Cleaning Co, "
         "this is Atlas, your virtual assistant. How can I help you today?"
@@ -259,20 +259,17 @@ EXAMPLE_CLEANING_CONTEXT = BusinessContext(
         "Deep cleaning and specialty services are quoted individually."
     ),
     hours=BusinessHours(
-        monday_open="00:00",
-        monday_close="23:59",
-        tuesday_open="00:00",
-        tuesday_close="23:59",
-        wednesday_open="00:00",
-        wednesday_close="23:59",
-        thursday_open="00:00",
-        thursday_close="23:59",
-        friday_open="00:00",
-        friday_close="23:59",
-        saturday_open="00:00",
-        saturday_close="23:59",
-        sunday_open="00:00",
-        sunday_close="23:59",
+        monday_open="08:00",
+        monday_close="17:00",
+        tuesday_open="08:00",
+        tuesday_close="17:00",
+        wednesday_open="08:00",
+        wednesday_close="17:00",
+        thursday_open="08:00",
+        thursday_close="17:00",
+        friday_open="08:00",
+        friday_close="17:00",
+        # Saturday and Sunday closed (open/close default to None)
         timezone="America/Chicago",
     ),
     after_hours_message=(
@@ -307,3 +304,26 @@ if _example_calendar_id:
 _example_transfer = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_TRANSFER_NUMBER")
 if _example_transfer:
     EXAMPLE_CLEANING_CONTEXT.transfer_number = _example_transfer
+
+# The defaults above are public-safe placeholders. Real deployments supply the
+# live business identity via environment variables so no real data is committed.
+# The context is only registered for inbound/outbound traffic when at least one
+# phone number is configured (see CommsService._register_contexts), so an
+# unconfigured deployment never routes through the placeholder business.
+_example_phones = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_PHONE_NUMBERS")
+if _example_phones:
+    EXAMPLE_CLEANING_CONTEXT.phone_numbers = [
+        p.strip() for p in _example_phones.split(",") if p.strip()
+    ]
+
+_example_name = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_NAME")
+if _example_name:
+    EXAMPLE_CLEANING_CONTEXT.name = _example_name
+
+_example_greeting = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_GREETING")
+if _example_greeting:
+    EXAMPLE_CLEANING_CONTEXT.greeting = _example_greeting
+
+_example_persona = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_PERSONA")
+if _example_persona:
+    EXAMPLE_CLEANING_CONTEXT.persona = _example_persona

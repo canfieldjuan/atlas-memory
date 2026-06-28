@@ -20,37 +20,33 @@ import httpx
 # Business facts to seed -- EDIT THESE with real data
 # ============================================================================
 
+# NOTE: These are bracketed placeholders on purpose. The seed() guard below
+# drops any fact still containing "[" so this script fails closed and will not
+# ingest fictional sample data into a real knowledge graph. Replace the bracketed
+# tokens with your real business facts before running.
 BUSINESS_FACTS = [
     # Company basics
-    "The company name is Example Cleaning Co.",
-    "Example Cleaning Co is located at 123 Example St, Suite 1, Anytown, IL 60001.",
-    "Example Cleaning Co provides cleaning services for homes and offices.",
-    "Cleaning schedules are based on customer needs: weekly, daily, biweekly, monthly, or quarterly.",
+    "The company name is [COMPANY NAME].",
+    "[COMPANY NAME] is located at [BUSINESS ADDRESS].",
+    "[COMPANY NAME] provides [SERVICES OFFERED].",
+    "Cleaning schedules are based on customer needs: [SCHEDULE OPTIONS].",
 
     # Team
-    "Jordan Smith is the owner and founder of Example Cleaning Co.",
-    "Morgan Smith handles customer complaints, rescheduling, scheduling of new customers, and customer outreach.",
-    "Morgan Smith is the manager at Example Cleaning Co. She manages employees and customers.",
+    "[OWNER NAME] is the owner and founder of [COMPANY NAME].",
+    "[MANAGER NAME] is the manager at [COMPANY NAME] and handles customers and staff.",
 
     # Clients
-    "Acme Corporation is a client of Example Cleaning Co.",
-    "Globex Corporation is a client of Example Cleaning Co.",
-    "Umbrella Corp is a client of Example Cleaning Co.",
-    "Initech is a client of Example Cleaning Co.",
-    "Soylent Corp is a client of Example Cleaning Co.",
-    "Stark Industries is a client of Example Cleaning Co.",
+    "[CLIENT NAME] is a client of [COMPANY NAME].",
 
     # Communication
-    "The preferred communication method for residential clients is phone.",
-    "The preferred communication method for commercial clients is email.",
+    "The preferred communication method for residential clients is [METHOD].",
+    "The preferred communication method for commercial clients is [METHOD].",
 
     # Hours and scheduling
-    "Office hours are 8:00 AM to 5:00 PM, Monday through Friday.",
-    "Cleaning starts as early as 6:00 AM, Monday through Friday.",
-    "Example Cleaning Co is closed on Saturday and Sunday.",
+    "Office hours are [OFFICE HOURS].",
 
     # Invoicing
-    "Invoices are sent on the 1st of every month by email.",
+    "Invoices are sent [INVOICE SCHEDULE].",
 ]
 
 GROUP_ID = "atlas-conversations"

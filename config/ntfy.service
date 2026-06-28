@@ -5,9 +5,13 @@ After=network.target
 [Service]
 ExecStart=/usr/local/bin/ntfy serve --listen-http :8090
 Restart=always
-User=user
-Group=user
-WorkingDirectory=/home/user
+# Self-contained: systemd allocates a transient service account and managed
+# state/cache dirs (/var/lib/ntfy, /var/cache/ntfy), so the unit needs no
+# pre-existing OS user or home directory.
+DynamicUser=yes
+StateDirectory=ntfy
+CacheDirectory=ntfy
+WorkingDirectory=/var/lib/ntfy
 
 [Install]
 WantedBy=multi-user.target

@@ -40,7 +40,7 @@ Compose the email in this exact order:
 - If frequency pricing differs, show each option clearly
 - If only one price is provided, present it with the stated frequency
 - Keep the entire email body under **300 words** -- proposals should be scannable, not dense
-- Always include business contact: (555) 010-0000 or info@example.com
+- Always include the business's contact phone and email exactly as provided in the context; never invent or hard-code contact details
 - Subject line format: Cleaning Proposal for [Business Name]
 - Do NOT use markdown formatting in the email body -- plain text with line breaks only
 - Do NOT include legal disclaimers or warranty language unless explicitly provided
