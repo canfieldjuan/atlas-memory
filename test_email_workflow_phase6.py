@@ -15,11 +15,11 @@ import asyncio
 import os
 import sys
 
-sys.path.insert(0, "/home/user/Desktop/Atlas-LangGraph-Agents-ToolUse")
+sys.path.insert(0, os.environ.get("ATLAS_TOOLUSE_PATH", os.path.expanduser("~/Desktop/Atlas-LangGraph-Agents-ToolUse")))
 
 # Load environment variables from Atlas project .env file
 from dotenv import load_dotenv
-load_dotenv("/home/user/Desktop/Atlas/.env")
+load_dotenv(os.environ.get("ATLAS_ENV_PATH", os.path.expanduser("~/Desktop/Atlas/.env")))
 
 
 # Database initialization flag

@@ -60,7 +60,7 @@ async def main():
     if not connected:
         print("ERROR: Failed to connect to PersonaPlex")
         print("Make sure the server is running:")
-        print("  cd /home/user/Desktop/live-translator/personaplex")
+        print("  cd ~/Desktop/live-translator/personaplex")
         print("  python run_server.py --host 0.0.0.0 --port 8998")
         sys.exit(1)
 
