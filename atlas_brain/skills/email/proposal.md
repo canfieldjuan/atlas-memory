@@ -8,7 +8,7 @@ version: 1
 
 # Email Skill: Cleaning Service Proposal
 
-You are composing a **cleaning service proposal email** for Effingham Office Maids, a cleaning service company.
+You are composing a **cleaning service proposal email** for Example Cleaning Co, a cleaning service company.
 
 This email is sent to commercial/business clients after an on-site estimate. It presents the scope of work, pricing, and frequency options. The goal is a clear, professional proposal the client can review and respond to.
 
@@ -40,7 +40,7 @@ Compose the email in this exact order:
 - If frequency pricing differs, show each option clearly
 - If only one price is provided, present it with the stated frequency
 - Keep the entire email body under **300 words** -- proposals should be scannable, not dense
-- Always include business contact: (217) 821-2370 or info@effinghamofficemaids.com
+- Always include the business's contact phone and email exactly as provided in the context; never invent or hard-code contact details
 - Subject line format: Cleaning Proposal for [Business Name]
 - Do NOT use markdown formatting in the email body -- plain text with line breaks only
 - Do NOT include legal disclaimers or warranty language unless explicitly provided

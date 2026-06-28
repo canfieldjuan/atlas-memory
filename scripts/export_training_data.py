@@ -56,7 +56,7 @@ async def export_conversations_for_training(
         "metadata": {
             "session_id": "uuid-here",
             "timestamp": "2026-01-14",
-            "speaker_id": "Juan",
+            "speaker_id": "Alex",
             "quality_score": 0.85  # Add your own quality metrics
         }
     }

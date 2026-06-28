@@ -6,7 +6,7 @@ import sys
 
 # Use mock tools for testing
 os.environ["USE_REAL_TOOLS"] = "false"
-sys.path.insert(0, "/home/juan-canfield/Desktop/Atlas-LangGraph-Agents-ToolUse")
+sys.path.insert(0, os.environ.get("ATLAS_TOOLUSE_PATH", os.path.expanduser("~/Desktop/Atlas-LangGraph-Agents-ToolUse")))
 
 
 async def main():

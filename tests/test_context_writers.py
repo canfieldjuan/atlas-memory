@@ -264,13 +264,13 @@ class TestFullWriterPipeline:
         ctx._current_room = None
 
         try:
-            ctx.update_person("sp1", name="Juan", confidence=0.95)
+            ctx.update_person("sp1", name="Alex", confidence=0.95)
             ctx.update_object("laptop", confidence=0.8, location="desk")
             ctx.update_device("light.office", name="Office Light", state={"state": "on"})
             ctx.set_room("office")
 
             result = ctx.build_context_string()
-            assert "Juan" in result
+            assert "Alex" in result
             assert "laptop" in result
             assert "Office Light" in result
             assert "Location: office" in result

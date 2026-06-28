@@ -19,7 +19,7 @@ from atlas_comms.core.config import (
     CommsConfig,
     comms_settings,
     DEFAULT_PERSONAL_CONTEXT,
-    EFFINGHAM_MAIDS_CONTEXT,
+    EXAMPLE_CLEANING_CONTEXT,
 )
 
 __all__ = [
@@ -34,5 +34,5 @@ __all__ = [
     "CommsConfig",
     "comms_settings",
     "DEFAULT_PERSONAL_CONTEXT",
-    "EFFINGHAM_MAIDS_CONTEXT",
+    "EXAMPLE_CLEANING_CONTEXT",
 ]

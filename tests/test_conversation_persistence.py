@@ -51,12 +51,12 @@ class TestConversationTurns:
             session_id=test_session,
             role="user",
             content="Turn on the lights",
-            speaker_id="Juan",
+            speaker_id="Alex",
             turn_type="command",
         )
 
         history = await conversation_repo.get_history(test_session, limit=1)
-        assert history[0].speaker_id == "Juan"
+        assert history[0].speaker_id == "Alex"
 
     @pytest.mark.asyncio
     async def test_add_turn_with_intent(self, conversation_repo, test_session):

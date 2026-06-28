@@ -45,7 +45,7 @@ class MockCamera(BaseCameraCapability):
         # Randomly decide if there's a detection (20% chance)
         if random.random() < 0.2:
             detection_types = [
-                (DetectionType.PERSON, ["unknown", "known:Juan", "known:Guest"]),
+                (DetectionType.PERSON, ["unknown", "known:Alex", "known:Guest"]),
                 (DetectionType.VEHICLE, ["car", "delivery_truck", "motorcycle"]),
                 (DetectionType.ANIMAL, ["cat", "dog", "bird"]),
             ]

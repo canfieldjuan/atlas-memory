@@ -33,7 +33,7 @@ from atlas_comms.core import (
     BusinessHours,
     SchedulingConfig,
     DEFAULT_PERSONAL_CONTEXT,
-    EFFINGHAM_MAIDS_CONTEXT,
+    EXAMPLE_CLEANING_CONTEXT,
 )
 from atlas_comms.services import (
     CalendarService,
@@ -68,7 +68,7 @@ __all__ = [
     "SchedulingConfig",
     "comms_settings",
     "DEFAULT_PERSONAL_CONTEXT",
-    "EFFINGHAM_MAIDS_CONTEXT",
+    "EXAMPLE_CLEANING_CONTEXT",
     # Protocols (from atlas_comms)
     "TelephonyProvider",
     "CallState",

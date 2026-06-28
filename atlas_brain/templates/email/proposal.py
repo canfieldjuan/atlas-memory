@@ -1,16 +1,23 @@
 """
-Email templates for Effingham Office Maids cleaning proposals.
+Email templates for Example Cleaning Co cleaning proposals.
 
 These are sent after an estimate/walkthrough has been completed,
 containing the detailed proposal for the client to review and approve.
 """
 
-# Business contact info (shared with estimate_confirmation)
-BUSINESS_NAME = "Effingham Office Maids"
-BUSINESS_ADDRESS = "1901 S. 4th Street, Effingham IL, 62401"
-BUSINESS_PHONE = "(217) 207-3097"
-BUSINESS_EMAIL = "info@effinghamofficemaids.com"
-BUSINESS_WEBSITE = "effinghamofficemaids.com"
+import os
+
+# Business contact info (shared with estimate_confirmation). Real values are
+# loaded from environment variables at runtime; the defaults below are
+# public-safe placeholders only.
+BUSINESS_NAME = os.environ.get("ATLAS_BUSINESS_NAME", "Example Cleaning Co")
+BUSINESS_ADDRESS = os.environ.get("ATLAS_BUSINESS_ADDRESS", "123 Example St, Anytown IL, 60001")
+BUSINESS_PHONE = os.environ.get("ATLAS_BUSINESS_PHONE", "(555) 010-0000")
+BUSINESS_EMAIL = os.environ.get("ATLAS_BUSINESS_EMAIL", "info@example.com")
+BUSINESS_WEBSITE = os.environ.get("ATLAS_BUSINESS_WEBSITE", "example.com")
+# Email sign-off. Defaults to a generic, business-derived signatory so no
+# personal name is hard-coded; override with a real signatory via env if desired.
+BUSINESS_SIGNATORY = os.environ.get("ATLAS_BUSINESS_SIGNATORY", f"The {BUSINESS_NAME} Team")
 
 # Key terms from proposal
 TERMS = (
@@ -72,7 +79,7 @@ We look forward to the opportunity to serve {client_name}. Please don't hesitate
 
 Best regards,
 
-Juan Canfield
+{BUSINESS_SIGNATORY}
 {BUSINESS_NAME}
 {BUSINESS_ADDRESS}
 Phone: {BUSINESS_PHONE}
@@ -128,7 +135,7 @@ We can't wait to help make your home sparkle! Let us know if you have any questi
 
 Warm regards,
 
-Juan
+{BUSINESS_SIGNATORY}
 {BUSINESS_NAME}
 {BUSINESS_PHONE}
 {BUSINESS_EMAIL}
@@ -177,6 +184,7 @@ def format_business_proposal(
         BUSINESS_PHONE=BUSINESS_PHONE,
         BUSINESS_EMAIL=BUSINESS_EMAIL,
         BUSINESS_WEBSITE=BUSINESS_WEBSITE,
+        BUSINESS_SIGNATORY=BUSINESS_SIGNATORY,
         TERMS=TERMS,
     )
     return subject, body
@@ -219,6 +227,7 @@ def format_residential_proposal(
         BUSINESS_PHONE=BUSINESS_PHONE,
         BUSINESS_EMAIL=BUSINESS_EMAIL,
         BUSINESS_WEBSITE=BUSINESS_WEBSITE,
+        BUSINESS_SIGNATORY=BUSINESS_SIGNATORY,
         TERMS=TERMS,
     )
     return subject, body

@@ -208,7 +208,7 @@ scapy>=2.5.0
 
 ### 1. Install Python Dependencies
 ```bash
-cd /home/juan-canfield/Desktop/Atlas
+cd /home/user/Desktop/Atlas
 pip install scapy>=2.5.0 psutil>=5.9.0
 ```
 

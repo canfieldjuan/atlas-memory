@@ -17,7 +17,7 @@
 
 ### Step 1: Install Dependencies (30 seconds)
 ```bash
-cd /home/juan-canfield/Desktop/Atlas
+cd /home/user/Desktop/Atlas
 pip install scapy>=2.5.0 psutil>=5.9.0
 sudo apt-get install aircrack-ng wireless-tools
 ```

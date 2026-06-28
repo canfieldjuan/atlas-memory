@@ -55,8 +55,8 @@ class BusinessContext(BaseModel):
     """
 
     # Identity
-    id: str  # Unique identifier, e.g., "effingham_maids", "personal"
-    name: str  # Display name, e.g., "Effingham Office Maids"
+    id: str  # Unique identifier, e.g., "example_cleaning", "personal"
+    name: str  # Display name, e.g., "Example Cleaning Co"
     description: str = ""
 
     # Phone number(s) associated with this context (E.164 format)
@@ -220,19 +220,19 @@ DEFAULT_PERSONAL_CONTEXT = BusinessContext(
     sms_enabled=True,
 )
 
-# Effingham Office Maids business context
-EFFINGHAM_MAIDS_CONTEXT = BusinessContext(
-    id="effingham_maids",
-    name="Effingham Office Maids",
-    description="Professional commercial and office cleaning service in Effingham, IL",
-    phone_numbers=["+16183683696"],  # SignalWire number
+# Example Cleaning Co business context
+EXAMPLE_CLEANING_CONTEXT = BusinessContext(
+    id="example_cleaning",
+    name="Example Cleaning Co",
+    description="Professional commercial and office cleaning service in Anytown, IL",
+    phone_numbers=[],  # Set via ATLAS_COMMS_EXAMPLE_CLEANING_PHONE_NUMBERS (comma-separated E.164)
     greeting=(
-        "Thank you for calling Effingham Office Maids, "
+        "Thank you for calling Example Cleaning Co, "
         "this is Atlas, your virtual assistant. How can I help you today?"
     ),
     voice_name="Atlas",
     persona=(
-        "You are a friendly and professional virtual receptionist for Effingham Office Maids, "
+        "You are a friendly and professional virtual receptionist for Example Cleaning Co, "
         "a commercial cleaning company. Be helpful, courteous, and efficient. "
         "When discussing pricing, explain that prices depend on the size and condition of the space, "
         "cleaning frequency, and specific services needed. Always offer to schedule a free on-site estimate. "
@@ -249,7 +249,7 @@ EFFINGHAM_MAIDS_CONTEXT = BusinessContext(
         "Floor care - stripping, waxing, carpet cleaning",
         "Window cleaning - interior and exterior",
     ],
-    service_area="Effingham, Mattoon, Charleston, and surrounding areas within 30 miles",
+    service_area="Anytown and surrounding areas within 30 miles",
     pricing_info=(
         "Pricing is customized based on square footage, cleaning frequency, and specific needs. "
         "We offer free on-site estimates with no obligation. "
@@ -259,37 +259,34 @@ EFFINGHAM_MAIDS_CONTEXT = BusinessContext(
         "Deep cleaning and specialty services are quoted individually."
     ),
     hours=BusinessHours(
-        monday_open="00:00",
-        monday_close="23:59",
-        tuesday_open="00:00",
-        tuesday_close="23:59",
-        wednesday_open="00:00",
-        wednesday_close="23:59",
-        thursday_open="00:00",
-        thursday_close="23:59",
-        friday_open="00:00",
-        friday_close="23:59",
-        saturday_open="00:00",
-        saturday_close="23:59",
-        sunday_open="00:00",
-        sunday_close="23:59",
+        monday_open="08:00",
+        monday_close="17:00",
+        tuesday_open="08:00",
+        tuesday_close="17:00",
+        wednesday_open="08:00",
+        wednesday_close="17:00",
+        thursday_open="08:00",
+        thursday_close="17:00",
+        friday_open="08:00",
+        friday_close="17:00",
+        # Saturday and Sunday closed (open/close default to None)
         timezone="America/Chicago",
     ),
     after_hours_message=(
-        "Thank you for calling Effingham Office Maids. We're currently closed. "
+        "Thank you for calling Example Cleaning Co. We're currently closed. "
         "Our office hours are Monday through Friday, 8 AM to 5 PM Central Time. "
         "Please leave your name and number, and we'll call you back on the next business day. "
         "You can also text us at this number, and we'll respond as soon as possible!"
     ),
     scheduling=SchedulingConfig(
         enabled=True,
-        calendar_id=None,  # Set via ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID
+        calendar_id=None,  # Set via ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID
         min_notice_hours=24,
         max_advance_days=60,
         default_duration_minutes=60,
         buffer_minutes=30,
     ),
-    transfer_number=None,  # Set via ATLAS_COMMS_EFFINGHAM_MAIDS_TRANSFER_NUMBER
+    transfer_number=None,  # Set via ATLAS_COMMS_EXAMPLE_CLEANING_TRANSFER_NUMBER
     max_call_duration_minutes=15,
     take_messages=True,
     sms_enabled=True,
@@ -300,10 +297,33 @@ EFFINGHAM_MAIDS_CONTEXT = BusinessContext(
 # Load calendar_id from environment variable if set
 import os as _os
 
-_effingham_calendar_id = _os.environ.get("ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID")
-if _effingham_calendar_id:
-    EFFINGHAM_MAIDS_CONTEXT.scheduling.calendar_id = _effingham_calendar_id
+_example_calendar_id = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID")
+if _example_calendar_id:
+    EXAMPLE_CLEANING_CONTEXT.scheduling.calendar_id = _example_calendar_id
 
-_effingham_transfer = _os.environ.get("ATLAS_COMMS_EFFINGHAM_MAIDS_TRANSFER_NUMBER")
-if _effingham_transfer:
-    EFFINGHAM_MAIDS_CONTEXT.transfer_number = _effingham_transfer
+_example_transfer = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_TRANSFER_NUMBER")
+if _example_transfer:
+    EXAMPLE_CLEANING_CONTEXT.transfer_number = _example_transfer
+
+# The defaults above are public-safe placeholders. Real deployments supply the
+# live business identity via environment variables so no real data is committed.
+# The context is only registered for inbound/outbound traffic when at least one
+# phone number is configured (see CommsService._register_contexts), so an
+# unconfigured deployment never routes through the placeholder business.
+_example_phones = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_PHONE_NUMBERS")
+if _example_phones:
+    EXAMPLE_CLEANING_CONTEXT.phone_numbers = [
+        p.strip() for p in _example_phones.split(",") if p.strip()
+    ]
+
+_example_name = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_NAME")
+if _example_name:
+    EXAMPLE_CLEANING_CONTEXT.name = _example_name
+
+_example_greeting = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_GREETING")
+if _example_greeting:
+    EXAMPLE_CLEANING_CONTEXT.greeting = _example_greeting
+
+_example_persona = _os.environ.get("ATLAS_COMMS_EXAMPLE_CLEANING_PERSONA")
+if _example_persona:
+    EXAMPLE_CLEANING_CONTEXT.persona = _example_persona

@@ -20,37 +20,33 @@ import httpx
 # Business facts to seed -- EDIT THESE with real data
 # ============================================================================
 
+# NOTE: These are bracketed placeholders on purpose. The seed() guard below
+# drops any fact still containing "[" so this script fails closed and will not
+# ingest fictional sample data into a real knowledge graph. Replace the bracketed
+# tokens with your real business facts before running.
 BUSINESS_FACTS = [
     # Company basics
-    "The company name is Effingham Office Maids.",
-    "Effingham Office Maids is located at 1901 South 4th Street, Suite 1, Effingham, IL 60421.",
-    "Effingham Office Maids provides cleaning services for homes and offices.",
-    "Cleaning schedules are based on customer needs: weekly, daily, biweekly, monthly, or quarterly.",
+    "The company name is [COMPANY NAME].",
+    "[COMPANY NAME] is located at [BUSINESS ADDRESS].",
+    "[COMPANY NAME] provides [SERVICES OFFERED].",
+    "Cleaning schedules are based on customer needs: [SCHEDULE OPTIONS].",
 
     # Team
-    "Juan Canfield is the owner and founder of Effingham Office Maids.",
-    "Juan handles customer complaints, rescheduling, scheduling of new customers, and customer outreach.",
-    "Mayra Canfield is the manager at Effingham Office Maids. She manages employees and customers.",
+    "[OWNER NAME] is the owner and founder of [COMPANY NAME].",
+    "[MANAGER NAME] is the manager at [COMPANY NAME] and handles customers and staff.",
 
     # Clients
-    "Menards is a client of Effingham Office Maids.",
-    "Ackra Builders is a client of Effingham Office Maids.",
-    "The American Red Cross is a client of Effingham Office Maids.",
-    "Mid Illinois Concrete is a client of Effingham Office Maids.",
-    "Heartland Human Services is a client of Effingham Office Maids.",
-    "Canarm Inc. is a client of Effingham Office Maids.",
+    "[CLIENT NAME] is a client of [COMPANY NAME].",
 
     # Communication
-    "The preferred communication method for residential clients is phone.",
-    "The preferred communication method for commercial clients is email.",
+    "The preferred communication method for residential clients is [METHOD].",
+    "The preferred communication method for commercial clients is [METHOD].",
 
     # Hours and scheduling
-    "Office hours are 8:00 AM to 5:00 PM, Monday through Friday.",
-    "Cleaning starts as early as 6:00 AM, Monday through Friday.",
-    "Effingham Office Maids is closed on Saturday and Sunday.",
+    "Office hours are [OFFICE HOURS].",
 
     # Invoicing
-    "Invoices are sent on the 1st of every month by email.",
+    "Invoices are sent [INVOICE SCHEDULE].",
 ]
 
 GROUP_ID = "atlas-conversations"

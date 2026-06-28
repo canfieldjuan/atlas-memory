@@ -86,7 +86,7 @@ All under `/api/v1/identity/`
 
 ```json
 {
-  "name": "juan_canfield",
+  "name": "jordan_smith",
   "modality": "face",
   "embedding": [0.123, -0.456, ...],
   "source_node": "brain"
@@ -133,7 +133,7 @@ cd ~/Desktop/Atlas
 ### Verify sync
 ```bash
 # Check Pi logs after Brain restart
-ssh canfieldjuan@100.95.224.113 "journalctl -u atlas-node -n 20 --no-pager"
+ssh user@100.64.0.1 "journalctl -u atlas-node -n 20 --no-pager"
 
 # Should see:
 # Identity sync: sent request with 3 face, 0 gait, 0 speaker
@@ -144,7 +144,7 @@ ssh canfieldjuan@100.95.224.113 "journalctl -u atlas-node -n 20 --no-pager"
 ### Seed Brain DB from Pi's existing .npy files
 After sync is running, register a face on the Pi:
 ```bash
-python /opt/atlas-node/scripts/register_face.py juan_canfield --image /path/to/photo.jpg
+python /opt/atlas-node/scripts/register_face.py jordan_smith --image /path/to/photo.jpg
 ```
 The IdentitySyncManager's file watcher will detect the new .npy within 10 seconds
 and push it to Brain. Brain stores it and any future edge nodes will receive it

@@ -526,7 +526,7 @@ Service Details:
 We look forward to serving you!
 
 Best regards,
-Effingham Office Maids"""
+Example Cleaning Co"""
         return subject, body
 
 
@@ -570,7 +570,7 @@ Pricing: ${price} per cleaning ({frequency})
 Please let us know if you have any questions.
 
 Best regards,
-Effingham Office Maids"""
+Example Cleaning Co"""
         return subject, body
 
 

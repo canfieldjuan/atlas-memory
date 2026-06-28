@@ -1,15 +1,18 @@
 """
-Email templates for Effingham Office Maids estimate confirmations.
+Email templates for Example Cleaning Co estimate confirmations.
 
 Templates use Python string formatting with named placeholders.
 """
 
-# Business contact info
-BUSINESS_NAME = "Effingham Office Maids"
-BUSINESS_ADDRESS = "503 S. 5th Street, Effingham IL, 62401"
-BUSINESS_PHONE = "(217) 207-3097"
-BUSINESS_EMAIL = "info@effinghamofficemaids.com"
-BUSINESS_WEBSITE = "effinghamofficemaids.com"
+import os
+
+# Business contact info. Real values are loaded from environment variables at
+# runtime; the defaults below are public-safe placeholders only.
+BUSINESS_NAME = os.environ.get("ATLAS_BUSINESS_NAME", "Example Cleaning Co")
+BUSINESS_ADDRESS = os.environ.get("ATLAS_BUSINESS_ADDRESS", "123 Example St, Anytown IL, 60001")
+BUSINESS_PHONE = os.environ.get("ATLAS_BUSINESS_PHONE", "(555) 010-0000")
+BUSINESS_EMAIL = os.environ.get("ATLAS_BUSINESS_EMAIL", "info@example.com")
+BUSINESS_WEBSITE = os.environ.get("ATLAS_BUSINESS_WEBSITE", "example.com")
 
 # Key terms from proposal (to be prominently featured)
 TERMS = (

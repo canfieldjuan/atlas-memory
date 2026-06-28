@@ -31,7 +31,7 @@
 +-------------------------------------------------------------------+
 | user_id | voice    | speech_rate | verbosity | formality          |
 +-------------------------------------------------------------------+
-| Juan    | "atlas"  | 1.0         | "concise" | "casual"           |
+| Alex    | "atlas"  | 1.0         | "concise" | "casual"           |
 | Maria   | "luna"   | 0.9         | "normal"  | "casual"           |
 | Guest   | "atlas"  | 1.0         | "verbose" | "professional"     |
 +-------------------------------------------------------------------+
@@ -93,7 +93,7 @@ Context for tone/preferences flows through V2V metadata:
 {
   "transcript": "turn on the lights",
   "speaker_id": "uuid",
-  "speaker_name": "Juan",
+  "speaker_name": "Alex",
   "preferences": {
     "voice": "atlas",
     "verbosity": "concise",

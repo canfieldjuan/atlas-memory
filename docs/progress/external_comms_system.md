@@ -16,7 +16,7 @@ Build a comprehensive AI-powered communications system that can:
 ## Current Setup
 
 - **Personal Phone**: Regular cell (details TBD)
-- **Business Phone**: eVoice (Effingham Office Maids)
+- **Business Phone**: eVoice (Example Cleaning Co)
 - **Business Type**: Cleaning service - appointment-based
 
 ## Architecture Overview
@@ -61,8 +61,8 @@ Build a comprehensive AI-powered communications system that can:
 │  │           Business Contexts                             │ │
 │  │                                                         │ │
 │  │  ┌─────────────────────┐  ┌─────────────────────────┐ │ │
-│  │  │  Effingham Office   │  │      Personal           │ │ │
-│  │  │      Maids          │  │                         │ │ │
+│  │  │  Example Cleaning │  │      Personal           │ │ │
+│  │  │      Co             │  │                         │ │ │
 │  │  │                     │  │  - Personal contacts    │ │ │
 │  │  │  - Business hours   │  │  - Family/friends mode  │ │ │
 │  │  │  - Services/pricing │  │  - Message taking       │ │ │
@@ -84,7 +84,7 @@ Build a comprehensive AI-powered communications system that can:
 
 ### Phase 2: Business Integration
 - [ ] Port/forward eVoice number to programmable provider
-- [ ] Effingham Office Maids context configuration
+- [ ] Example Cleaning Co context configuration
   - Business hours
   - Services offered
   - Pricing information
@@ -123,7 +123,7 @@ Build a comprehensive AI-powered communications system that can:
 
 **Recommendation**: Start with Twilio (best docs) or SignalWire (cheaper, compatible API)
 
-## Effingham Office Maids - Business Context
+## Example Cleaning Co - Business Context
 
 ### Services (to be filled in)
 - [ ] List of cleaning services offered
@@ -139,7 +139,7 @@ Build a comprehensive AI-powered communications system that can:
 - [ ] Cancellation policy
 
 ### Call Handling
-- Greeting: "Thank you for calling Effingham Office Maids, this is Atlas. How can I help you today?"
+- Greeting: "Thank you for calling Example Cleaning Co, this is Atlas. How can I help you today?"
 - Key intents:
   - Schedule appointment
   - Get quote

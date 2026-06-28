@@ -11,7 +11,7 @@ from .config import (
     AtlasBrainConfig,
     comms_settings,
     DEFAULT_PERSONAL_CONTEXT,
-    EFFINGHAM_MAIDS_CONTEXT,
+    EXAMPLE_CLEANING_CONTEXT,
 )
 from .protocols import (
     Call,
@@ -35,7 +35,7 @@ __all__ = [
     "AtlasBrainConfig",
     "comms_settings",
     "DEFAULT_PERSONAL_CONTEXT",
-    "EFFINGHAM_MAIDS_CONTEXT",
+    "EXAMPLE_CLEANING_CONTEXT",
     # Protocols
     "Call",
     "CallState",

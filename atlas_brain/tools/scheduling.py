@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import dateparser
 
 from ..config import settings
-from ..comms.config import EFFINGHAM_MAIDS_CONTEXT, BusinessContext
+from ..comms.config import EXAMPLE_CLEANING_CONTEXT, BusinessContext
 from ..comms.context import get_context_router
 from ..storage.repositories.appointment import get_appointment_repo
 from ..storage.exceptions import DatabaseUnavailableError, DatabaseOperationError
@@ -38,20 +38,20 @@ def _get_default_context() -> Optional[BusinessContext]:
     """Get the default business context for scheduling."""
     router = get_context_router()
 
-    # Try effingham_maids first
-    ctx = router.get_context("effingham_maids")
+    # Try example_cleaning first
+    ctx = router.get_context("example_cleaning")
     if ctx:
         return ctx
 
     # If not registered, try to register it (for standalone tool usage)
     try:
-        from ..comms.config import EFFINGHAM_MAIDS_CONTEXT
-        if EFFINGHAM_MAIDS_CONTEXT.scheduling.enabled:
-            router.register_context(EFFINGHAM_MAIDS_CONTEXT)
-            logger.info("Auto-registered effingham_maids context for scheduling")
-            return EFFINGHAM_MAIDS_CONTEXT
+        from ..comms.config import EXAMPLE_CLEANING_CONTEXT
+        if EXAMPLE_CLEANING_CONTEXT.scheduling.enabled:
+            router.register_context(EXAMPLE_CLEANING_CONTEXT)
+            logger.info("Auto-registered example_cleaning context for scheduling")
+            return EXAMPLE_CLEANING_CONTEXT
     except Exception as e:
-        logger.debug("Could not auto-register effingham_maids: %s", e)
+        logger.debug("Could not auto-register example_cleaning: %s", e)
 
     # Fall back to first registered context
     contexts = router.list_contexts()
@@ -202,7 +202,7 @@ class CheckAvailabilityTool:
             return ToolResult(
                 success=False,
                 error="CALENDAR_NOT_CONFIGURED",
-                message="Calendar not configured. Set ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID.",
+                message="Calendar not configured. Set ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID.",
             )
 
         # Parse date if provided
@@ -345,7 +345,7 @@ class BookAppointmentTool:
             return ToolResult(
                 success=False,
                 error="CALENDAR_NOT_CONFIGURED",
-                message="Calendar not configured. Set ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID.",
+                message="Calendar not configured. Set ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID.",
             )
 
         # Validate required params
@@ -675,7 +675,7 @@ class RescheduleAppointmentTool:
             return ToolResult(
                 success=False,
                 error="CALENDAR_NOT_CONFIGURED",
-                message="Calendar not configured. Set ATLAS_COMMS_EFFINGHAM_MAIDS_CALENDAR_ID.",
+                message="Calendar not configured. Set ATLAS_COMMS_EXAMPLE_CLEANING_CALENDAR_ID.",
             )
 
         customer_phone = params.get("customer_phone")

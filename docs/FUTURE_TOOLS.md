@@ -13,7 +13,7 @@
 ## Known Issues / Improvements
 
 ### Calendar Tool
-- [ ] **Multiple calendars with similar names** - When user has multiple calendars with same prefix (e.g., "Effingham - Residential", "Effingham - Commercial"), generic query like "effingham calendar" matches first one found
+- [ ] **Multiple calendars with similar names** - When user has multiple calendars with same prefix (e.g., "Example - Residential", "Example - Commercial"), generic query like "example calendar" matches first one found
   - Potential fix: Fuzzy matching with scoring, prefer more specific matches
   - Potential fix: Ask user to clarify if multiple matches found
 - [ ] **Calendar name discovery** - User may not know exact calendar names

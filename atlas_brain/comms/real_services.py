@@ -193,7 +193,7 @@ Best regards,
 class SignalWireSMSService(SMSService):
     """SMS service using SignalWire via CommsService."""
 
-    def __init__(self, context_id: str = "effingham_maids"):
+    def __init__(self, context_id: str = "example_cleaning"):
         self._context_id = context_id
         self._comms_service = None
 
@@ -486,7 +486,7 @@ def get_email_service() -> EmailService:
     return StubEmailService()
 
 
-def get_sms_service(context_id: str = "effingham_maids") -> SMSService:
+def get_sms_service(context_id: str = "example_cleaning") -> SMSService:
     """Get the real SMS service."""
     from .config import comms_settings
     if comms_settings.enabled:

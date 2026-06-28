@@ -28,8 +28,8 @@ Migrate 3 email tools to enhanced LangGraph workflow with draft preview, email h
 ### Configuration (from .env)
 - ATLAS_EMAIL_ENABLED=true
 - ATLAS_EMAIL_API_KEY=re_2RaLjJuN_... (Resend)
-- ATLAS_EMAIL_DEFAULT_FROM=alerts@finetunelab.ai
-- Test recipient: canfieldjuan24@gmail.com
+- ATLAS_EMAIL_DEFAULT_FROM=alerts@example.com
+- Test recipient: user@example.com
 
 ---
 
@@ -141,7 +141,7 @@ Migrate 3 email tools to enhanced LangGraph workflow with draft preview, email h
 
 **Tasks:**
 - [x] Test all intents with mock tools (19/19 patterns)
-- [x] Test real email sending to canfieldjuan24@gmail.com
+- [x] Test real email sending to user@example.com
 - [x] Test estimate template (residential)
 - [x] Test proposal template (business)
 - [x] Test generic email sending
@@ -152,7 +152,7 @@ Migrate 3 email tools to enhanced LangGraph workflow with draft preview, email h
 - [x] Test missing field clarification
 
 **Test Results:** 47 passed, 0 failed, 1 skipped (DB not available)
-**Real Emails Sent:** 6 emails to canfieldjuan24@gmail.com
+**Real Emails Sent:** 6 emails to user@example.com
 
 ---
 
@@ -193,7 +193,7 @@ Migrate 3 email tools to enhanced LangGraph workflow with draft preview, email h
 - Draft generation for estimate and proposal emails
 - Tested with mock tools: 7/7 intent tests pass
 - Tested with real email: SUCCESS
-- Sent real email to canfieldjuan24@gmail.com
+- Sent real email to user@example.com
 - Message ID: 831a6958-6bbd-4cac-8b68-8fdd90584e70
 
 ### Session 3 - 2026-01-31
@@ -236,7 +236,7 @@ Migrate 3 email tools to enhanced LangGraph workflow with draft preview, email h
 - Fixed follow_up_days None handling in create_follow_up_reminder
 - Added rate limit handling (2s delay between real email tests)
 - All 47 tests pass (1 skipped due to DB not available)
-- Sent 6 real test emails to canfieldjuan24@gmail.com:
+- Sent 6 real test emails to user@example.com:
   - 3 estimate emails (residential template)
   - 2 proposal emails (business template)
   - 1 generic email

@@ -4,11 +4,11 @@ import asyncio
 import os
 import sys
 
-sys.path.insert(0, "/home/juan-canfield/Desktop/Atlas-LangGraph-Agents-ToolUse")
+sys.path.insert(0, os.environ.get("ATLAS_TOOLUSE_PATH", os.path.expanduser("~/Desktop/Atlas-LangGraph-Agents-ToolUse")))
 
 # Load environment variables from Atlas project .env file
 from dotenv import load_dotenv
-load_dotenv("/home/juan-canfield/Desktop/Atlas/.env")
+load_dotenv(os.environ.get("ATLAS_ENV_PATH", os.path.expanduser("~/Desktop/Atlas/.env")))
 
 
 async def test_mock():
@@ -58,7 +58,7 @@ async def test_mock():
 
     result = await run_email_workflow(
         "send estimate",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Test Client",
         client_type="residential",
         address="123 Main St",
@@ -79,7 +79,7 @@ async def test_mock():
 
     result = await run_email_workflow(
         "send proposal",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Acme Corp",
         client_type="business",
         contact_name="John Smith",
@@ -114,7 +114,7 @@ async def test_mock():
 
     result = await run_email_workflow(
         "send estimate",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Follow-up Test Client",
         client_type="residential",
         address="789 Test Lane",
@@ -175,16 +175,16 @@ async def test_real_email():
     print("=" * 70)
 
     # Test: Send real estimate email
-    print("\nTest: Send Real Estimate Email to canfieldjuan24@gmail.com")
+    print("\nTest: Send Real Estimate Email to user@example.com")
     print("-" * 50)
 
     # First generate draft
     result = await run_email_workflow(
         "send estimate",
-        to_address="canfieldjuan24@gmail.com",
+        to_address="user@example.com",
         client_name="Atlas Test User",
         client_type="residential",
-        address="123 Test Street, Effingham IL",
+        address="123 Test Street, Anytown IL",
         service_date="February 5, 2026",
         service_time="10:00 AM",
         price="175.00",
@@ -209,7 +209,7 @@ async def test_real_email():
         print(f"\nResponse: {send_result.get('response')}")
 
     print("\n" + "=" * 70)
-    print("CHECK YOUR EMAIL: canfieldjuan24@gmail.com")
+    print("CHECK YOUR EMAIL: user@example.com")
     print("=" * 70)
 
 
@@ -218,7 +218,7 @@ async def main():
     await test_mock()
 
     # Ask before sending real email
-    print("\n\nReady to send REAL email to canfieldjuan24@gmail.com")
+    print("\n\nReady to send REAL email to user@example.com")
     print("Running real email test...")
 
     await test_real_email()
